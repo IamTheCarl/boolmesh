@@ -117,8 +117,13 @@ fn assemble_halfs(hs: &[Half], hid_f: &[i32], fid: usize) -> Vec<Vec<usize>> {
             loops.push(Vec::new());
         }
         loops.last_mut().unwrap().push(hid1);
-        hid1 = v2h.get_mut(&hs[hid1].head).unwrap().pop_back().unwrap();
-        v2h.retain(|_, vq| !vq.is_empty());
+
+        let edge_id = hs[hid1].head;
+        let queue = v2h.get_mut(&edge_id).unwrap();
+        hid1 = queue.pop_back().unwrap();
+        if queue.is_empty() {
+            v2h.remove(&edge_id);
+        }
     }
     loops
 }
