@@ -99,8 +99,8 @@ fn assemble_halfs(hs: &[Half], hid_f: &[i32], fid: usize) -> Vec<Vec<usize>> {
     let num = end - bgn;
     let mut v2h = BTreeMap::new();
 
-    for i in bgn..bgn + num {
-        let id = hs[i].tail;
+    for (i, half) in hs.iter().enumerate().skip(bgn).take(num) {
+        let id = half.tail;
         v2h.entry(id).or_insert_with(VecDeque::new).push_front(i);
     }
 

@@ -213,14 +213,13 @@ fn find_collisions<F, T>(
     let mut rec = |node: i32| {
         let q = &queries[query_idx];
         let overlap = node_bb[node as usize].overlaps(q);
-        if overlap && let Some(il) = node2leaf(node) {
-            if !self_collision || il != query_idx as i32 {
+        if overlap && let Some(il) = node2leaf(node)
+            && (!self_collision || il != query_idx as i32) {
                 match q {
                     Query::Bb(q) => { if let Some(iq) = q.id { record(iq, il as usize); }},
                     Query::Pt(q) => { if let Some(iq) = q.id { record(iq, il as usize); }},
                 }
             }
-        }
         overlap && node2intl(node).is_some() //should traverse into node
     };
 

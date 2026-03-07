@@ -63,12 +63,10 @@ pub fn intersect<T: BoolReal>(
             } else {
                 ql.y
             }
+        } else if use_p {
+            pr.y
         } else {
-            if use_p {
-                pr.y
-            } else {
-                qr.y
-            }
+            qr.y
         });
     xyzz.z = lambda * (pr.z - pl.z) + if use_l { pl.z } else { pr.z };
     xyzz.w = lambda * (qr.z - ql.z) + if use_l { ql.z } else { qr.z };

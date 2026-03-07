@@ -636,9 +636,7 @@ impl<T: BoolReal> EarClip<T> {
         let p_bgn = bgn.borrow().pos;
         let mut con = if p_end.x < p_bgn.x {
             eb.ptr_r()
-        } else if eb.pos_r().x < p_bgn.x {
-            Rc::clone(end)
-        } else if eb.pos_r().y - p_bgn.y > p_bgn.y - p_end.y {
+        } else if eb.pos_r().x < p_bgn.x || eb.pos_r().y - p_bgn.y > p_bgn.y - p_end.y {
             Rc::clone(end)
         } else {
             eb.ptr_r()

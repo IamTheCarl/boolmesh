@@ -165,6 +165,7 @@ pub fn swap_degenerates<T: BoolReal>(
         return;
     }
     let mut tag = 0;
+    #[cfg(feature = "verbose")]
     let mut _flag = 0;
     let mut buff = Vec::with_capacity(10);
     let mut stack = vec![];
@@ -175,7 +176,10 @@ pub fn swap_degenerates<T: BoolReal>(
         .collect::<Vec<_>>();
 
     for hid in rec {
-        _flag += 1;
+        #[cfg(feature = "verbose")]
+        {
+            _flag += 1;
+        }
         tag += 1;
         recursive_edge_swap(
             hs, ps, ns, ts, hid, &mut tag, &mut visit, &mut stack, &mut buff, tol,
