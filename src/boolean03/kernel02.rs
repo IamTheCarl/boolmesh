@@ -71,10 +71,8 @@ impl<'a, T: BoolReal> Kernel02<'a, T> {
             if !shadows(p.z, z02, exp * self.ns[p0].z) {
                 s02 = 0;
             }
-        } else {
-            if !shadows(z02, p.z, exp * self.ns[closest_vid].z) {
-                s02 = 0;
-            }
+        } else if !shadows(z02, p.z, exp * self.ns[closest_vid].z) {
+            s02 = 0;
         }
         Some((s02, z02))
     }

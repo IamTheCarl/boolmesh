@@ -38,10 +38,10 @@ pub struct Manifold<T: BoolReal = f64> {
 
 impl<T: BoolReal> Manifold<T> {
     pub fn new(pos: &[T], idx: &[usize]) -> Result<Self, ManifoldError> {
-        if pos.len() % 3 != 0 {
+        if !pos.len().is_multiple_of(3) {
             return Err(ManifoldError::PositionArrayNotMultipleOf3);
         }
-        if idx.len() % 3 != 0 {
+        if !idx.len().is_multiple_of(3) {
             return Err(ManifoldError::IndexArrayNotMultipleOf3);
         }
 
@@ -336,7 +336,7 @@ pub fn cleanup_unused_verts<T: BoolReal>(ps: &mut Vec<Vector3<T>>, hs: &mut Vec<
     // truncate pos container
     let nv = new2old
         .iter()
-        .position(|&v| mt[v] >= K_NO_CODE)
+        .position(|&v| mt[v] == K_NO_CODE)
         .unwrap_or(new2old.len());
 
     new2old.truncate(nv);
