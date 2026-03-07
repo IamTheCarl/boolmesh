@@ -131,8 +131,7 @@ pub fn intersect12<T: BoolReal>(
         .iter()
         .enumerate()
         .filter(|(_, h)| h.is_forward())
-        .map(|(i, h)| Query::Bb(BBox::new(Some(i), &[ma.ps[h.tail], ma.ps[h.head]])))
-        .collect::<Vec<Query<T>>>();
+        .map(|(i, h)| Query::Bb(BBox::new(Some(i), &[ma.ps[h.tail], ma.ps[h.head]])));
 
     let mut x12_ = vec![];
     let mut v12_ = vec![];
@@ -151,7 +150,7 @@ pub fn intersect12<T: BoolReal>(
         }
     };
 
-    mb.collider.collision(&bbs, &mut rec);
+    mb.collider.collision(bbs, &mut rec);
 
     let mut seq = (0..p1q2_.len()).collect::<Vec<_>>();
 

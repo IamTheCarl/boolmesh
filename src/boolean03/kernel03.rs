@@ -28,16 +28,12 @@ pub fn winding03<T: BoolReal>(
     };
 
     mb.collider.collision(
-        &ma.ps
-            .iter()
-            .enumerate()
-            .map(|(i, p)| {
-                Query::Pt(BPos {
-                    id: Some(i),
-                    pos: Vector2::new(p.x, p.y),
-                })
+        ma.ps.iter().enumerate().map(|(i, p)| {
+            Query::Pt(BPos {
+                id: Some(i),
+                pos: Vector2::new(p.x, p.y),
             })
-            .collect::<Vec<_>>(),
+        }),
         &mut |a, b| {
             if let Some((s, _)) = k02.op(a, b) {
                 w03[a] += s * if fwd { 1 } else { -1 };
