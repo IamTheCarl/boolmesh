@@ -208,7 +208,7 @@ pub fn compute_slice<T: BoolReal + BoolOpsNum>(manifold: &Manifold<T>, height: T
 
     manifold
         .collider
-        .collision(&[Query::Bb(bounding_box)], &mut |_query_id, triangle_id| {
+        .collision([Query::Bb(bounding_box)], &mut |_query_id, triangle_id| {
             let z_points = [0, 1, 2]
                 .into_iter()
                 .map(|j| manifold.ps[manifold.hs[3 * triangle_id + j].tail].z);

@@ -180,10 +180,10 @@ impl<T: BoolReal> MortonCollider<T> {
         res
     }
 
-    pub fn collision<F>(&self, queries: &[Query<T>], record:&mut F) where F: FnMut(usize, usize) {
-        for i in 0..queries.len() {
+    pub fn collision<F>(&self, queries: impl IntoIterator<Item = Query<T>>, record:&mut F) where F: FnMut(usize, usize) {
+        for (i, q) in queries.into_iter().enumerate() {
             find_collisions(
-                queries,
+                q,
                 &self.node_bb,
                 &self.intl_children,
                 i,
@@ -195,7 +195,7 @@ impl<T: BoolReal> MortonCollider<T> {
 }
 
 fn find_collisions<F, T>(
-    queries: &[Query<T>],
+    q: Query<T>,
     node_bb: &[BBox<T>],
     children: &[(i32, i32)],
     query_idx: usize,
@@ -211,11 +211,10 @@ fn find_collisions<F, T>(
     let mut node = K_ROOT;
 
     let mut rec = |node: i32| {
-        let q = &queries[query_idx];
-        let overlap = node_bb[node as usize].overlaps(q);
+        let overlap = node_bb[node as usize].overlaps(&q);
         if overlap && let Some(il) = node2leaf(node)
             && (!self_collision || il != query_idx as i32) {
-                match q {
+                match &q {
                     Query::Bb(q) => { if let Some(iq) = q.id { record(iq, il as usize); }},
                     Query::Pt(q) => { if let Some(iq) = q.id { record(iq, il as usize); }},
                 }
