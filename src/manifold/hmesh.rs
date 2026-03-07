@@ -2,16 +2,17 @@
 //--- This Source Code Form is subject to the terms of the Mozilla Public License v.2.0.
 #![allow(clippy::needless_range_loop)]
 
-use crate::{Real, Vec2u, Vec3, Vec3u};
+use nalgebra::{Vector2, Vector3};
 #[cfg(feature = "rayon")]
 use rayon::prelude::*;
-use std::f64::consts::PI;
 use thiserror::Error;
+
+use crate::common::{BoolReal, VectorExt as _};
 
 /// Hmesh preserves the order of pos and idx in any cases.
 /// Edges are ordered so as the edge is forward (tail idx < head idx)
 #[derive(Debug, Clone)]
-pub(in crate::manifold) struct Hmesh {
+pub(in crate::manifold) struct Hmesh<T> {
     pub nv: usize,
     pub nf: usize,
     pub nh: usize,
@@ -19,16 +20,16 @@ pub(in crate::manifold) struct Hmesh {
     pub head: Vec<usize>,
     pub tail: Vec<usize>,
     pub half: Vec<usize>,
-    pub vns: Vec<Vec3>,
-    pub fns: Vec<Vec3>,
+    pub vns: Vec<Vector3<T>>,
+    pub fns: Vec<Vector3<T>>,
 }
 
-fn edge_topology(
-    pos: &[Vec3],
-    idx: &[Vec3u],
-    e2v: &mut Vec<Vec2u>,
-    e2f: &mut Vec<Vec2u>,
-    f2e: &mut Vec<Vec3u>,
+fn edge_topology<T: BoolReal>(
+    pos: &[Vector3<T>],
+    idx: &[Vector3<usize>],
+    e2v: &mut Vec<Vector2<usize>>,
+    e2f: &mut Vec<Vector2<usize>>,
+    f2e: &mut Vec<Vector3<usize>>,
 ) -> Result<(), HmeshError> {
     if pos.is_empty() {
         return Err(HmeshError::EmptyPositionMatrix);
@@ -58,9 +59,9 @@ fn edge_topology(
         }
     }
 
-    e2v.resize(ne, Vec2u::MAX);
-    e2f.resize(ne, Vec2u::MAX);
-    f2e.resize(idx.len(), Vec3u::MAX);
+    e2v.resize(ne, Vector2::from_element(usize::MAX));
+    e2f.resize(ne, Vector2::from_element(usize::MAX));
+    f2e.resize(idx.len(), Vector3::from_element(usize::MAX));
     ne = 0;
 
     let mut i = 0;
@@ -105,8 +106,8 @@ fn edge_topology(
     Ok(())
 }
 
-impl Hmesh {
-    pub fn new(pos: &[Vec3], idx: &[Vec3u]) -> Result<Self, HmeshError> {
+impl<T: BoolReal> Hmesh<T> {
+    pub fn new(pos: &[Vector3<T>], idx: &[Vector3<usize>]) -> Result<Self, HmeshError> {
         let mut e2v = Default::default();
         let mut e2f = Default::default();
         let mut f2e = Default::default();
@@ -163,8 +164,8 @@ impl Hmesh {
         for i in 0..nh {
             half.push(i);
         }
-        let mut vns = vec![Vec3::ZERO; nv];
-        let mut fns = vec![Vec3::ZERO; nf];
+        let mut vns = vec![Vector3::zeros(); nv];
+        let mut fns = vec![Vector3::zeros(); nf];
 
         #[cfg(feature = "rayon")]
         fns.par_iter_mut().enumerate().for_each(|(i, n)| {
@@ -173,8 +174,8 @@ impl Hmesh {
             let p1 = pos[tail[ih]];
             let p0 = pos[tail[prev[ih]]];
             let x = p2 - p1;
-            let t = (p1 - p0) * -1.;
-            *n = x.cross(t).normalize();
+            let t = (p1 - p0) * -T::one();
+            *n = x.cross(&t).normalize();
         });
 
         #[cfg(not(feature = "rayon"))]
@@ -184,8 +185,8 @@ impl Hmesh {
             let p1 = pos[tail[ih]];
             let p0 = pos[tail[prev[ih]]];
             let x = p2 - p1;
-            let t = (p1 - p0) * -1.;
-            fns[i] = x.cross(t).normalize();
+            let t = (p1 - p0) * -T::one();
+            fns[i] = x.cross(&t).normalize();
         }
 
         for i in 0..nf {
@@ -199,11 +200,11 @@ impl Hmesh {
                 if e_curr.is_nan() || e_prev.is_nan() {
                     continue;
                 }
-                let dot = -e_prev.dot(e_curr);
-                let phi = if dot >= 1. {
-                    0.
-                } else if dot <= -1. {
-                    PI as Real
+                let dot = -e_prev.dot(&e_curr);
+                let phi = if dot >= T::one() {
+                    T::zero()
+                } else if dot <= -T::one() {
+                    T::PI
                 } else {
                     dot.acos()
                 };

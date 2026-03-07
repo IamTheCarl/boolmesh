@@ -3,37 +3,48 @@
 
 #[cfg(test)]
 mod test_intersection {
-    use crate::boolean03::Boolean03;
+    use nalgebra::Vector3;
+
     use crate::boolean03::kernel03::winding03;
     use crate::boolean03::kernel12::intersect12;
+    use crate::boolean03::Boolean03;
     use crate::boolean45::boolean45;
-    use crate::{OpType, Vec3};
-    use crate::Manifold;
+    use crate::OpType;
+
+    type Manifold = crate::Manifold<f64>;
 
     pub fn gen_tet_a() -> Manifold {
         Manifold::new(
-            &vec![-0.866025, -1., 0.5, 0., -1., -1., 0.866025, -1., 0.5, 0., 1., 0.],
+            &vec![
+                -0.866025, -1., 0.5, 0., -1., -1., 0.866025, -1., 0.5, 0., 1., 0.,
+            ],
             &vec![0, 3, 1, 1, 2, 0, 1, 3, 2, 2, 3, 0],
-        ).unwrap()
+        )
+        .unwrap()
     }
 
     pub fn gen_tet_b() -> Manifold {
         Manifold::new(
-            &vec![-1., -0.866025, 0.5, -1., 0., -1., -1., 0.866025, 0.5, 1., 0., 0.],
+            &vec![
+                -1., -0.866025, 0.5, -1., 0., -1., -1., 0.866025, 0.5, 1., 0., 0.,
+            ],
             &vec![1, 3, 0, 1, 0, 2, 2, 3, 1, 0, 3, 2],
-        ).unwrap()
+        )
+        .unwrap()
     }
 
     pub fn gen_tet_c() -> Manifold {
         Manifold::new(
-            &vec![-2., -0.866025, 0.5, -2., -0., -1., -2., 0.866025, 0.5, 0., 0., 0.],
+            &vec![
+                -2., -0.866025, 0.5, -2., -0., -1., -2., 0.866025, 0.5, 0., 0., 0.,
+            ],
             &vec![1, 3, 0, 1, 0, 2, 2, 3, 1, 0, 3, 2],
-        ).unwrap()
+        )
+        .unwrap()
     }
 
-
     #[test]
-    fn test_tet_sub_inclusion_case(){
+    fn test_tet_sub_inclusion_case() {
         let expand = -1.;
         let mfd_p = gen_tet_a();
         let mfd_q = gen_tet_c();
@@ -50,20 +61,29 @@ mod test_intersection {
         assert_eq!(v12.len(), 0);
         assert_eq!(x21, vec![-1, -1, -1]);
         let v21_ = vec![
-            Vec3::new(-0.224009, 0., -0.112005),
-            Vec3::new(-0.294367, 0.127465, 0.0735918),
-            Vec3::new(-0.395087, -0.171077, 0.0987716),
+            Vector3::new(-0.224009, 0., -0.112005),
+            Vector3::new(-0.294367, 0.127465, 0.0735918),
+            Vector3::new(-0.395087, -0.171077, 0.0987716),
         ];
         for i in 0..3 {
-            assert!((v21[i] - v21_[i]).length() < 1e-6);
+            assert!((v21[i] - v21_[i]).norm() < 1e-6);
         }
         let op = OpType::Subtract;
-        let b03 = Boolean03{ p1q2, p2q1, x12, x21, w03, w30, v12, v21 };
+        let b03 = Boolean03 {
+            p1q2,
+            p2q1,
+            x12,
+            x21,
+            w03,
+            w30,
+            v12,
+            v21,
+        };
         let b45 = boolean45(&mfd_p, &mfd_q, &b03, &op);
     }
 
     #[test]
-    fn test_tet_sub_penetration_case(){
+    fn test_tet_sub_penetration_case() {
         let expand = -1.;
         let mfd_p = gen_tet_a();
         let mfd_q = gen_tet_b();
@@ -75,16 +95,16 @@ mod test_intersection {
         let w30 = winding03(&mfd_p, &mfd_q, expand, false);
 
         let v12_ = vec![
-            Vec3::new(-0.763707, -0.763707, 0.440927),
-            Vec3::new(-0.242656, 0.439609, 0.140098),
-            Vec3::new(0.,0.,-0.5),
-            Vec3::new(0.,0.,-0.5)
+            Vector3::new(-0.763707, -0.763707, 0.440927),
+            Vector3::new(-0.242656, 0.439609, 0.140098),
+            Vector3::new(0., 0., -0.5),
+            Vector3::new(0., 0., -0.5),
         ];
         let v21_ = vec![
-            Vec3::new(0.302169,0.302169,0.174458),
-            Vec3::new(0.439609,-0.242656,0.140098),
-            Vec3::new(0.302169,0.302169,0.174458),
-            Vec3::new(-0.763707,-0.763707,0.440927)
+            Vector3::new(0.302169, 0.302169, 0.174458),
+            Vector3::new(0.439609, -0.242656, 0.140098),
+            Vector3::new(0.302169, 0.302169, 0.174458),
+            Vector3::new(-0.763707, -0.763707, 0.440927),
         ];
 
         assert_eq!(w03, vec![0, 0, 0, 0]);
@@ -92,52 +112,87 @@ mod test_intersection {
         assert_eq!(x12, vec![-1, 1, -1, 1]);
         assert_eq!(x21, vec![1, 1, -1, -1]);
         for i in 0..3 {
-            assert!((v12[i] - v12_[i]).length() < 1e-6);
-            assert!((v21[i] - v21_[i]).length() < 1e-6);
+            assert!((v12[i] - v12_[i]).norm() < 1e-6);
+            assert!((v21[i] - v21_[i]).norm() < 1e-6);
         }
 
         let op = OpType::Subtract;
-        let b03 = Boolean03{ p1q2, p2q1, x12, x21, w03, w30, v12, v21 };
+        let b03 = Boolean03 {
+            p1q2,
+            p2q1,
+            x12,
+            x21,
+            w03,
+            w30,
+            v12,
+            v21,
+        };
         let b45 = boolean45(&mfd_p, &mfd_q, &b03, &op);
     }
 }
 
 #[cfg(test)]
 mod test_triangulation {
-    use crate::triangulation::Pt;
+    use nalgebra::{Vector2, Vector3};
+
     use crate::triangulation::ear_clip::EarClip;
-    use crate::{Vec2, Vec3, Vec3u};
+    use crate::triangulation::Pt;
 
     #[test]
     fn test_ear_clip() {
         let polys = vec![
             vec![
-                Pt {idx: 2120, pos: Vec2::new(0.048238, 0.680959)},
-                Pt {idx: 2124, pos: Vec2::new(-0.0145625, -0.676874)},
-                Pt {idx: 2123, pos: Vec2::new(0.0245192, -0.68213)},
-                Pt {idx: 2119, pos: Vec2::new(0.0482562, -0.681659)},
+                Pt {
+                    idx: 2120,
+                    pos: Vector2::new(0.048238, 0.680959),
+                },
+                Pt {
+                    idx: 2124,
+                    pos: Vector2::new(-0.0145625, -0.676874),
+                },
+                Pt {
+                    idx: 2123,
+                    pos: Vector2::new(0.0245192, -0.68213),
+                },
+                Pt {
+                    idx: 2119,
+                    pos: Vector2::new(0.0482562, -0.681659),
+                },
             ],
             vec![
-                Pt {idx: 2122, pos: Vec2::new(-0.068635, -0.673357)},
-                Pt {idx: 2125, pos: Vec2::new(-0.0487738, -0.690778)},
-                Pt {idx: 2121, pos: Vec2::new(-0.02279, -0.676339)},
+                Pt {
+                    idx: 2122,
+                    pos: Vector2::new(-0.068635, -0.673357),
+                },
+                Pt {
+                    idx: 2125,
+                    pos: Vector2::new(-0.0487738, -0.690778),
+                },
+                Pt {
+                    idx: 2121,
+                    pos: Vector2::new(-0.02279, -0.676339),
+                },
             ],
         ];
         let res0 = vec![
-            Vec3u::new(2123, 2119, 2120),
-            Vec3u::new(2123, 2120, 2124),
-            Vec3u::new(2125, 2121, 2122)
+            Vector3::new(2123, 2119, 2120),
+            Vector3::new(2123, 2120, 2124),
+            Vector3::new(2125, 2121, 2122),
         ];
 
         let res1 = EarClip::new(&polys, 1e-12).triangulate();
-        for i in 0..3 { assert_eq!(res0[i], res1[i]); }
+        for i in 0..3 {
+            assert_eq!(res0[i], res1[i]);
+        }
     }
 }
 
 #[cfg(test)]
 mod test_simplification {
+
     use crate::simplification::collapse::collapse_collinear_edges;
-    use crate::Vec3;
+
+    type Vector3 = nalgebra::Vector3<f64>;
 
     #[test]
     fn test_collapse() {
@@ -219,84 +274,173 @@ mod test_simplification {
         ];
 
         let mut ps = vec![
-            Vec3::new(-0.8, -1., -1.),
-            Vec3::new(-0.8, -1., 1.),
-            Vec3::new(-0.8, 1., -1.),
-            Vec3::new(-0.8, 1., 1.),
-            Vec3::new(1.2, -1., -1.),
-            Vec3::new(1.2, -1., 1.),
-            Vec3::new(1.2, 1., -1.),
-            Vec3::new(1.2, 1., 1.),
-            Vec3::new(0., 0., 0.),
-            Vec3::new(-0.8, -0.14641, -0.14641),
-            Vec3::new(-0.8, 0.2, 0.2),
-            Vec3::new(-0.8, -0.34641, 0.2),
-            Vec3::new(-0.8, 0., -0.4),
-            Vec3::new(-0.8, 0.34641, 0.2),
+            Vector3::new(-0.8, -1., -1.),
+            Vector3::new(-0.8, -1., 1.),
+            Vector3::new(-0.8, 1., -1.),
+            Vector3::new(-0.8, 1., 1.),
+            Vector3::new(1.2, -1., -1.),
+            Vector3::new(1.2, -1., 1.),
+            Vector3::new(1.2, 1., -1.),
+            Vector3::new(1.2, 1., 1.),
+            Vector3::new(0., 0., 0.),
+            Vector3::new(-0.8, -0.14641, -0.14641),
+            Vector3::new(-0.8, 0.2, 0.2),
+            Vector3::new(-0.8, -0.34641, 0.2),
+            Vector3::new(-0.8, 0., -0.4),
+            Vector3::new(-0.8, 0.34641, 0.2),
         ];
 
         let mut ns = vec![
-            Vec3::new(-0., -1., -0.),
-            Vec3::new(-0., -0., -1.),
-            Vec3::new(-1., -0., 0.),
-            Vec3::new(-1., -0., 0.),
-            Vec3::new(-1., -0., 0.),
-            Vec3::new(-1., -0., 0.),
-            Vec3::new(-1., -0., -0.),
-            Vec3::new(-1., -0., -0.),
-            Vec3::new(-1., -0., -0.),
-            Vec3::new(-1., -0., -0.),
-            Vec3::new(-1., -0., -0.),
-            Vec3::new(0., 0., 1.),
-            Vec3::new(0., 1., 0.),
-            Vec3::new(1., 0., 0.),
-            Vec3::new(0., -1., 0.),
-            Vec3::new(-0., 0., 1.),
-            Vec3::new(0., 0., -1.),
-            Vec3::new(-0., 1., 0.),
-            Vec3::new(1., 0., -0.),
-            Vec3::new(-0.242536, 0.840168, 0.485071),
-            Vec3::new(-0.242536, 0.840168, 0.485071),
-            Vec3::new(-0.242536, -0.840168, 0.485071),
-            Vec3::new(-0.242536, -3.22877e-20, -0.970143),
-            Vec3::new(-0.242536, -3.22877e-20, -0.970143),
+            Vector3::new(-0., -1., -0.),
+            Vector3::new(-0., -0., -1.),
+            Vector3::new(-1., -0., 0.),
+            Vector3::new(-1., -0., 0.),
+            Vector3::new(-1., -0., 0.),
+            Vector3::new(-1., -0., 0.),
+            Vector3::new(-1., -0., -0.),
+            Vector3::new(-1., -0., -0.),
+            Vector3::new(-1., -0., -0.),
+            Vector3::new(-1., -0., -0.),
+            Vector3::new(-1., -0., -0.),
+            Vector3::new(0., 0., 1.),
+            Vector3::new(0., 1., 0.),
+            Vector3::new(1., 0., 0.),
+            Vector3::new(0., -1., 0.),
+            Vector3::new(-0., 0., 1.),
+            Vector3::new(0., 0., -1.),
+            Vector3::new(-0., 1., 0.),
+            Vector3::new(1., 0., -0.),
+            Vector3::new(-0.242536, 0.840168, 0.485071),
+            Vector3::new(-0.242536, 0.840168, 0.485071),
+            Vector3::new(-0.242536, -0.840168, 0.485071),
+            Vector3::new(-0.242536, -3.22877e-20, -0.970143),
+            Vector3::new(-0.242536, -3.22877e-20, -0.970143),
         ];
 
         let mut refs = vec![
-            Tref{mid: 1, fid: 0, pid: 3},
-            Tref{mid: 1, fid: 0, pid: 5},
-            Tref{mid: 1, fid: 0, pid: 2},
-            Tref{mid: 1, fid: 0, pid: 2},
-            Tref{mid: 1, fid: 0, pid: 2},
-            Tref{mid: 1, fid: 0, pid: 2},
-            Tref{mid: 1, fid: 0, pid: 2},
-            Tref{mid: 1, fid: 0, pid: 2},
-            Tref{mid: 1, fid: 0, pid: 2},
-            Tref{mid: 1, fid: 0, pid: 2},
-            Tref{mid: 1, fid: 0, pid: 2},
-            Tref{mid: 1, fid: 0, pid: 1},
-            Tref{mid: 1, fid: 0, pid: 0},
-            Tref{mid: 1, fid: 0, pid: 4},
-            Tref{mid: 1, fid: 0, pid: 3},
-            Tref{mid: 1, fid: 0, pid: 1},
-            Tref{mid: 1, fid: 0, pid: 5},
-            Tref{mid: 1, fid: 0, pid: 0},
-            Tref{mid: 1, fid: 0, pid: 4},
-            Tref{mid: 2, fid: 0, pid: 0},
-            Tref{mid: 2, fid: 0, pid: 0},
-            Tref{mid: 2, fid: 0, pid: 3},
-            Tref{mid: 2, fid: 0, pid: 2},
-            Tref{mid: 2, fid: 0, pid: 2},
+            Tref {
+                mid: 1,
+                fid: 0,
+                pid: 3,
+            },
+            Tref {
+                mid: 1,
+                fid: 0,
+                pid: 5,
+            },
+            Tref {
+                mid: 1,
+                fid: 0,
+                pid: 2,
+            },
+            Tref {
+                mid: 1,
+                fid: 0,
+                pid: 2,
+            },
+            Tref {
+                mid: 1,
+                fid: 0,
+                pid: 2,
+            },
+            Tref {
+                mid: 1,
+                fid: 0,
+                pid: 2,
+            },
+            Tref {
+                mid: 1,
+                fid: 0,
+                pid: 2,
+            },
+            Tref {
+                mid: 1,
+                fid: 0,
+                pid: 2,
+            },
+            Tref {
+                mid: 1,
+                fid: 0,
+                pid: 2,
+            },
+            Tref {
+                mid: 1,
+                fid: 0,
+                pid: 2,
+            },
+            Tref {
+                mid: 1,
+                fid: 0,
+                pid: 2,
+            },
+            Tref {
+                mid: 1,
+                fid: 0,
+                pid: 1,
+            },
+            Tref {
+                mid: 1,
+                fid: 0,
+                pid: 0,
+            },
+            Tref {
+                mid: 1,
+                fid: 0,
+                pid: 4,
+            },
+            Tref {
+                mid: 1,
+                fid: 0,
+                pid: 3,
+            },
+            Tref {
+                mid: 1,
+                fid: 0,
+                pid: 1,
+            },
+            Tref {
+                mid: 1,
+                fid: 0,
+                pid: 5,
+            },
+            Tref {
+                mid: 1,
+                fid: 0,
+                pid: 0,
+            },
+            Tref {
+                mid: 1,
+                fid: 0,
+                pid: 4,
+            },
+            Tref {
+                mid: 2,
+                fid: 0,
+                pid: 0,
+            },
+            Tref {
+                mid: 2,
+                fid: 0,
+                pid: 0,
+            },
+            Tref {
+                mid: 2,
+                fid: 0,
+                pid: 3,
+            },
+            Tref {
+                mid: 2,
+                fid: 0,
+                pid: 2,
+            },
+            Tref {
+                mid: 2,
+                fid: 0,
+                pid: 2,
+            },
         ];
 
-        collapse_collinear_edges(
-            &mut hs,
-            &mut ps,
-            &mut ns,
-            &mut refs,
-            9,
-            1e-6
-        );
+        collapse_collinear_edges(&mut hs, &mut ps, &mut ns, &mut refs, 9, 1e-6);
 
         let hs_out = vec![
             (0, 4, 5),
@@ -374,20 +518,20 @@ mod test_simplification {
         ];
 
         let ps_out = vec![
-            Vec3::new(-0.8, -1., -1.),
-            Vec3::new(-0.8, -1., 1.),
-            Vec3::new(-0.8, 1., -1.),
-            Vec3::new(-0.8, 1., 1.),
-            Vec3::new(1.2, -1., -1.),
-            Vec3::new(1.2, -1., 1.),
-            Vec3::new(1.2, 1., -1.),
-            Vec3::new(1.2, 1., 1.),
-            Vec3::new(0., 0., 0.),
-            Vec3::NAN,
-            Vec3::NAN,
-            Vec3::new(-0.8, -0.34641, 0.2),
-            Vec3::new(-0.8, 0., -0.4),
-            Vec3::new(-0.8, 0.34641, 0.2),
+            Vector3::new(-0.8, -1., -1.),
+            Vector3::new(-0.8, -1., 1.),
+            Vector3::new(-0.8, 1., -1.),
+            Vector3::new(-0.8, 1., 1.),
+            Vector3::new(1.2, -1., -1.),
+            Vector3::new(1.2, -1., 1.),
+            Vector3::new(1.2, 1., -1.),
+            Vector3::new(1.2, 1., 1.),
+            Vector3::new(0., 0., 0.),
+            Vector3::from_element(f64::NAN),
+            Vector3::from_element(f64::NAN),
+            Vector3::new(-0.8, -0.34641, 0.2),
+            Vector3::new(-0.8, 0., -0.4),
+            Vector3::new(-0.8, 0.34641, 0.2),
         ];
 
         for i in 0..hs.len() {
@@ -396,15 +540,29 @@ mod test_simplification {
             let b = hs[i].head;
             let c = hs[i].pair;
             let (d, e, f) = hs_out[i];
-            if h.tail().is_none() { assert_eq!(d, -1); } else { assert_eq!(a as i32, d); }
-            if h.head().is_none() { assert_eq!(e, -1); } else { assert_eq!(b as i32, e); }
-            if h.pair().is_none() { assert_eq!(f, -1); } else { assert_eq!(c as i32, f); }
+            if h.tail().is_none() {
+                assert_eq!(d, -1);
+            } else {
+                assert_eq!(a as i32, d);
+            }
+            if h.head().is_none() {
+                assert_eq!(e, -1);
+            } else {
+                assert_eq!(b as i32, e);
+            }
+            if h.pair().is_none() {
+                assert_eq!(f, -1);
+            } else {
+                assert_eq!(c as i32, f);
+            }
         }
 
         for i in 0..ps.len() {
             let p0 = &ps[i];
             let p1 = &ps_out[i];
-            if !p0.x.is_nan() && !p0.y.is_nan() && p0.z.is_nan() { assert!((p0 - p1).length() < 1e-6); }
+            if !p0.x.is_nan() && !p0.y.is_nan() && p0.z.is_nan() {
+                assert!((p0 - p1).norm() < 1e-6);
+            }
         }
     }
 }
@@ -416,22 +574,16 @@ mod test_mesh_cleanup {
     #[test]
     fn test_dedup_verts() {
         let pos = vec![
-           -0.866025, -1., 0.5, // duplicated
-            0., -1., -1.,
-            0.866025, -1., 0.5, // duplicated 2
-           -0.866025, -1., 0.5, // duplicated
-            0., 1., 0.,
-            0.866025, -1., 0.5, // duplicated 2
+            -0.866025, -1., 0.5, // duplicated
+            0., -1., -1., 0.866025, -1., 0.5, // duplicated 2
+            -0.866025, -1., 0.5, // duplicated
+            0., 1., 0., 0.866025, -1., 0.5, // duplicated 2
         ];
         let idx = vec![
-            0, 4, 1,
-            0, 3, 1, // collapsed
+            0, 4, 1, 0, 3, 1, // collapsed
             0, 3, 2, // collapsed
             0, 3, 4, // collapsed
-            1, 2, 0,
-            1, 4, 2,
-            2, 4, 0,
-            2, 5, 0, // collapsed
+            1, 2, 0, 1, 4, 2, 2, 4, 0, 2, 5, 0, // collapsed
             5, 2, 1, // collapsed
         ];
         let mfd = Manifold::new(&pos, &idx).unwrap();

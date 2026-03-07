@@ -1,42 +1,44 @@
 //--- Copyright (C) 2025 Saki Komikado <komietty@gmail.com>,
 //--- This Source Code Form is subject to the terms of the Mozilla Public License v.2.0.
 
-use crate::{Real, Vec2, Vec3};
+use nalgebra::{Vector2, Vector3};
+
+use crate::common::{BoolReal, VectorExt as _};
 
 #[derive(Clone, Debug)]
-pub enum Query {
-    Bb(BBox),
-    Pt(BPos),
+pub enum Query<T> {
+    Bb(BBox<T>),
+    Pt(BPos<T>),
 }
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug)]
-pub struct BBox {
+pub struct BBox<T> {
     pub id: Option<usize>,
-    pub min: Vec3,
-    pub max: Vec3,
+    pub min: Vector3<T>,
+    pub max: Vector3<T>,
 }
 
 #[derive(Clone, Debug)]
-pub struct BPos {
+pub struct BPos<T> {
     pub id: Option<usize>,
-    pub pos: Vec2,
+    pub pos: Vector2<T>,
 }
 
-impl BBox {
+impl<T: BoolReal> BBox<T> {
     pub fn default() -> Self {
         BBox {
             id: None,
-            min: Vec3::MAX,
-            max: Vec3::MIN,
+            min: Vector3::from_element(T::MAX),
+            max: Vector3::from_element(T::MIN),
         }
     }
 
-    pub fn new(id: Option<usize>, pts: &[Vec3]) -> Self {
+    pub fn new(id: Option<usize>, pts: &[Vector3<T>]) -> Self {
         let mut b = BBox {
             id,
-            min: Vec3::MAX,
-            max: Vec3::MIN,
+            min: Vector3::from_element(T::MAX),
+            max: Vector3::from_element(T::MIN),
         };
         for pt in pts {
             b.union(pt);
@@ -44,18 +46,21 @@ impl BBox {
         b
     }
 
-    pub fn size(&self) -> Vec3 {
+    pub fn size(&self) -> Vector3<T> {
         self.max - self.min
     }
 
-    pub fn scale(&self) -> Real {
+    pub fn scale(&self) -> T {
         let s = self.size();
         s.x.abs().max(s.y.abs()).max(s.z.abs())
     }
 
-    pub fn overlaps(&self, q: &Query) -> bool {
+    pub fn overlaps(&self, q: &Query<T>) -> bool {
         match q {
-            Query::Bb(b) => self.min.cmple(b.max).all() && self.max.cmpge(b.min).all(),
+            Query::Bb(b) => {
+                self.min.iter().zip(b.max.iter()).all(|(s, b)| s <= b)
+                    && self.max.iter().zip(b.min.iter()).all(|(s, b)| s >= b)
+            }
             Query::Pt(p) => {
                 // only evaluates xy axis
                 self.min.x <= p.pos.x
@@ -66,12 +71,12 @@ impl BBox {
         }
     }
 
-    pub fn union(&mut self, p: &Vec3) {
+    pub fn union(&mut self, p: &Vector3<T>) {
         if p.x.is_nan() {
             return;
         }
-        self.min = self.min.min(*p);
-        self.max = self.max.max(*p);
+        self.min = self.min.min_components(p);
+        self.max = self.max.max_components(p);
     }
 
     pub fn longest_dim(&self) -> usize {
@@ -86,8 +91,8 @@ impl BBox {
     }
 }
 
-pub fn union_bbs(b0: &BBox, b1: &BBox) -> BBox {
-    let min = b0.min.min(b1.min);
-    let max = b0.max.max(b1.max);
+pub fn union_bbs<T: BoolReal>(b0: &BBox<T>, b1: &BBox<T>) -> BBox<T> {
+    let min = b0.min.min_components(&b1.min);
+    let max = b0.max.max_components(&b1.max);
     BBox { id: None, min, max }
 }

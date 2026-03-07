@@ -1,12 +1,16 @@
 //--- Copyright (C) 2025 Saki Komikado <komietty@gmail.com>,
 //--- This Source Code Form is subject to the terms of the Mozilla Public License v.2.0.
 
-use crate::manifold::{Manifold, ManifoldError};
+use crate::{
+    manifold::{Manifold, ManifoldError},
+    BoolReal,
+};
 
-pub fn generate_cube() -> Result<Manifold, ManifoldError> {
+pub fn generate_cube<T: BoolReal>() -> Result<Manifold<T>, ManifoldError> {
+    #[rustfmt::skip]
     let ps = [
-        -0.5, -0.5, -0.5, -0.5, -0.5, 0.5, -0.5, 0.5, -0.5, -0.5, 0.5, 0.5, 0.5, -0.5, -0.5, 0.5,
-        -0.5, 0.5, 0.5, 0.5, -0.5, 0.5, 0.5, 0.5,
+        -T::HALF, -T::HALF, -T::HALF, -T::HALF, -T::HALF, T::HALF, -T::HALF, T::HALF, -T::HALF, -T::HALF, T::HALF, T::HALF, T::HALF, -T::HALF, -T::HALF, T::HALF,
+        -T::HALF, T::HALF, T::HALF, T::HALF, -T::HALF, T::HALF, T::HALF, T::HALF,
     ];
 
     let ts = [

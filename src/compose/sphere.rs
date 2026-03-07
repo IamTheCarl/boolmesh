@@ -1,16 +1,17 @@
 //--- Copyright (C) 2025 Saki Komikado <komietty@gmail.com>,
 //--- This Source Code Form is subject to the terms of the Mozilla Public License v.2.0.
 
+use nalgebra::Vector3;
 use thiserror::Error;
 
-use crate::{manifold::ManifoldError, Manifold, Real, Vec3, Vec3u};
+use crate::common::BoolReal;
+use crate::{manifold::ManifoldError, Manifold};
 use std::collections::HashMap;
-use std::f64::consts::PI;
 
-pub fn generate_uv_sphere(
+pub fn generate_uv_sphere<T: BoolReal>(
     d0: usize, // sectors
     d1: usize, // stacks
-) -> Result<Manifold, UVSphereError> {
+) -> Result<Manifold<T>, UVSphereError> {
     if d0 < 3 || d1 < 2 {
         return Err(UVSphereError::InvalidSectorCount);
     }
@@ -18,14 +19,17 @@ pub fn generate_uv_sphere(
     let mut ps = vec![];
     let mut ts = vec![];
 
-    ps.push(Vec3::Y);
-    ps.push(Vec3::NEG_Y);
+    ps.push(Vector3::y());
+    ps.push(-Vector3::y());
 
     for i in 1..d1 {
-        let (sp, cp) = (PI * (i as f64 / d1 as f64)).sin_cos();
+        let i = T::cast_from_usize(i);
+        let (sp, cp) = (T::PI * (i / T::cast_from_usize(d1))).sin_cos();
         for j in 0..d0 {
-            let (st, ct) = (2. * PI * (j as f64 / d0 as f64)).sin_cos();
-            ps.push(Vec3::new((sp * ct) as Real, cp as Real, (sp * st) as Real));
+            let j = T::cast_from_usize(j);
+
+            let (st, ct) = (T::cast_from_usize(2) * T::PI * (j / T::cast_from_usize(d0))).sin_cos();
+            ps.push(Vector3::new(sp * ct, cp, sp * st));
         }
     }
 
@@ -33,15 +37,15 @@ pub fn generate_uv_sphere(
         for j in 0..d0 {
             let k = (j + 1) % d0;
             if s == 0 {
-                ts.push(Vec3u::new(0, 2 + k, 2 + j));
+                ts.push(Vector3::new(0, 2 + k, 2 + j));
             } else if s == d1 - 1 {
                 let r0 = 2 + (s - 1) * d0;
-                ts.push(Vec3u::new(r0 + j, r0 + k, 1));
+                ts.push(Vector3::new(r0 + j, r0 + k, 1));
             } else {
                 let r0 = 2 + (s - 1) * d0;
                 let r1 = 2 + s * d0;
-                ts.push(Vec3u::new(r0 + j, r0 + k, r1 + j));
-                ts.push(Vec3u::new(r0 + k, r1 + k, r1 + j));
+                ts.push(Vector3::new(r0 + j, r0 + k, r1 + j));
+                ts.push(Vector3::new(r0 + k, r1 + k, r1 + j));
             }
         }
     }
@@ -51,52 +55,52 @@ pub fn generate_uv_sphere(
     Ok(manifold)
 }
 
-pub fn generate_icosphere(subdivisions: u32) -> Result<Manifold, ManifoldError> {
-    let phi = ((1. + 5.0f32.sqrt()) / 2.) as Real;
+pub fn generate_icosphere<T: BoolReal>(subdivisions: u32) -> Result<Manifold<T>, ManifoldError> {
+    let phi = (T::one() + T::cast_from_f64(5.0).sqrt()) / T::cast_from_usize(2);
 
     let mut ps = vec![
-        Vec3::new(-1.0, phi, 0.0).normalize(),
-        Vec3::new(1.0, phi, 0.0).normalize(),
-        Vec3::new(-1.0, -phi, 0.0).normalize(),
-        Vec3::new(1.0, -phi, 0.0).normalize(),
-        Vec3::new(0.0, -1.0, phi).normalize(),
-        Vec3::new(0.0, 1.0, phi).normalize(),
-        Vec3::new(0.0, -1.0, -phi).normalize(),
-        Vec3::new(0.0, 1.0, -phi).normalize(),
-        Vec3::new(phi, 0.0, -1.0).normalize(),
-        Vec3::new(phi, 0.0, 1.0).normalize(),
-        Vec3::new(-phi, 0.0, -1.0).normalize(),
-        Vec3::new(-phi, 0.0, 1.0).normalize(),
+        Vector3::new(-T::one(), phi, T::zero()).normalize(),
+        Vector3::new(T::one(), phi, T::zero()).normalize(),
+        Vector3::new(-T::one(), -phi, T::zero()).normalize(),
+        Vector3::new(T::one(), -phi, T::zero()).normalize(),
+        Vector3::new(T::zero(), -T::one(), phi).normalize(),
+        Vector3::new(T::zero(), T::one(), phi).normalize(),
+        Vector3::new(T::zero(), -T::one(), -phi).normalize(),
+        Vector3::new(T::zero(), T::one(), -phi).normalize(),
+        Vector3::new(phi, T::zero(), -T::one()).normalize(),
+        Vector3::new(phi, T::zero(), T::one()).normalize(),
+        Vector3::new(-phi, T::zero(), -T::one()).normalize(),
+        Vector3::new(-phi, T::zero(), T::one()).normalize(),
     ];
 
     let mut ts = vec![
-        Vec3u::new(0, 11, 5),
-        Vec3u::new(0, 5, 1),
-        Vec3u::new(0, 1, 7),
-        Vec3u::new(0, 7, 10),
-        Vec3u::new(0, 10, 11),
-        Vec3u::new(1, 5, 9),
-        Vec3u::new(5, 11, 4),
-        Vec3u::new(11, 10, 2),
-        Vec3u::new(10, 7, 6),
-        Vec3u::new(7, 1, 8),
-        Vec3u::new(3, 9, 4),
-        Vec3u::new(3, 4, 2),
-        Vec3u::new(3, 2, 6),
-        Vec3u::new(3, 6, 8),
-        Vec3u::new(3, 8, 9),
-        Vec3u::new(4, 9, 5),
-        Vec3u::new(2, 4, 11),
-        Vec3u::new(6, 2, 10),
-        Vec3u::new(8, 6, 7),
-        Vec3u::new(9, 8, 1),
+        Vector3::new(0, 11, 5),
+        Vector3::new(0, 5, 1),
+        Vector3::new(0, 1, 7),
+        Vector3::new(0, 7, 10),
+        Vector3::new(0, 10, 11),
+        Vector3::new(1, 5, 9),
+        Vector3::new(5, 11, 4),
+        Vector3::new(11, 10, 2),
+        Vector3::new(10, 7, 6),
+        Vector3::new(7, 1, 8),
+        Vector3::new(3, 9, 4),
+        Vector3::new(3, 4, 2),
+        Vector3::new(3, 2, 6),
+        Vector3::new(3, 6, 8),
+        Vector3::new(3, 8, 9),
+        Vector3::new(4, 9, 5),
+        Vector3::new(2, 4, 11),
+        Vector3::new(6, 2, 10),
+        Vector3::new(8, 6, 7),
+        Vector3::new(9, 8, 1),
     ];
 
     let mut cache = HashMap::new();
 
     let get_midpoint = |vid1: usize,
                         vid2: usize,
-                        verts: &mut Vec<Vec3>,
+                        verts: &mut Vec<Vector3<T>>,
                         cache: &mut HashMap<(usize, usize), usize>| {
         let e = if vid1 < vid2 {
             (vid1, vid2)
@@ -122,10 +126,10 @@ pub fn generate_icosphere(subdivisions: u32) -> Result<Manifold, ManifoldError> 
             let b = get_midpoint(t[1], t[2], &mut ps, &mut cache);
             let c = get_midpoint(t[2], t[0], &mut ps, &mut cache);
 
-            ts_.push(Vec3u::new(t[0], a, c));
-            ts_.push(Vec3u::new(t[1], b, a));
-            ts_.push(Vec3u::new(t[2], c, b));
-            ts_.push(Vec3u::new(a, b, c));
+            ts_.push(Vector3::new(t[0], a, c));
+            ts_.push(Vector3::new(t[1], b, a));
+            ts_.push(Vector3::new(t[2], c, b));
+            ts_.push(Vector3::new(a, b, c));
         }
         ts = ts_;
     }

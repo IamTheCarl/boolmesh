@@ -1,8 +1,9 @@
 //--- Copyright (C) 2025 Saki Komikado <komietty@gmail.com>,
 //--- This Source Code Form is subject to the terms of the Mozilla Public License v.2.0.
 
-use crate::Vec3;
-use crate::bounds::{union_bbs, BBox, Query};
+use nalgebra::Vector3;
+
+use crate::{bounds::{BBox, Query, union_bbs}, common::{BoolReal, VectorExt as _}};
 
 pub const K_NO_CODE: u32 = 0xFFFFFFFF;
 const K_INITIAL_LENGTH: i32 = 128;
@@ -19,13 +20,13 @@ fn spread_bits_3(v: u32) -> u32 {
     v
 }
 
-pub fn morton_code(p: &Vec3, bb: &BBox) -> u32 {
+pub fn morton_code<T: BoolReal>(p: &Vector3<T>, bb: &BBox<T>) -> u32 {
     if p.x.is_nan() { return K_NO_CODE; }
-    let mut xyz = (p - bb.min) / (bb.max - bb.min);
-    xyz = (1024. * xyz).max(Vec3::ZERO).min(Vec3::new(1023., 1023., 1023.));
-    let x = spread_bits_3(xyz.x as u32);
-    let y = spread_bits_3(xyz.y as u32);
-    let z = spread_bits_3(xyz.z as u32);
+    let xyz = (p - bb.min).component_div(&(bb.max - bb.min));
+    let xyz = (xyz * T::cast_from_usize(1024)).max_components(&Vector3::zeros()).min_components(&Vector3::from_element(T::cast_from_usize(1023)));
+    let x = spread_bits_3(xyz.x.as_u32());
+    let y = spread_bits_3(xyz.y.as_u32());
+    let z = spread_bits_3(xyz.z.as_u32());
     x * 4 + y * 2 + z
 }
 
@@ -101,8 +102,8 @@ impl<'a> RadixTree<'a> {
     }
 }
 
-fn build_internal_boxes(
-    node_bb: &mut [BBox],
+fn build_internal_boxes<T: BoolReal>(
+    node_bb: &mut [BBox<T>],
     counter: &mut [i32],
     node_parent: &[i32],
     intl_children: &[(i32, i32)],
@@ -127,17 +128,17 @@ fn build_internal_boxes(
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug)]
-pub struct MortonCollider {
-    pub node_bb: Vec<BBox>,
+pub struct MortonCollider<T> {
+    pub node_bb: Vec<BBox<T>>,
     pub node_parent: Vec<i32>,
     pub intl_children: Vec<(i32, i32)>,
 }
 
-impl MortonCollider {
+impl<T: BoolReal> MortonCollider<T> {
     fn num_intl(&self) -> usize { self.intl_children.len() }
     fn num_leaf(&self) -> usize { if self.intl_children.is_empty() { 0 } else { self.num_intl() + 1 } }
 
-    fn update_boxes(&mut self, leaf_bb: &[BBox]) {
+    fn update_boxes(&mut self, leaf_bb: &[BBox<T>]) {
         for (i, box_val) in leaf_bb.iter().enumerate() {
             self.node_bb[i * 2] = box_val.clone();
         }
@@ -154,7 +155,7 @@ impl MortonCollider {
     }
 
     pub fn new(
-        leaf_bb: &[BBox],
+        leaf_bb: &[BBox<T>],
         leaf_morton: &[u32]
     ) -> Self {
         let n_intl = leaf_bb.len() - 1;
@@ -179,7 +180,7 @@ impl MortonCollider {
         res
     }
 
-    pub fn collision<F>(&self, queries: &[Query], record:&mut F) where F: FnMut(usize, usize) {
+    pub fn collision<F>(&self, queries: &[Query<T>], record:&mut F) where F: FnMut(usize, usize) {
         for i in 0..queries.len() {
             find_collisions(
                 queries,
@@ -193,14 +194,17 @@ impl MortonCollider {
     }
 }
 
-fn find_collisions<F>(
-    queries: &[Query],
-    node_bb: &[BBox],
+fn find_collisions<F, T>(
+    queries: &[Query<T>],
+    node_bb: &[BBox<T>],
     children: &[(i32, i32)],
     query_idx: usize,
     record: &mut F,
     self_collision: bool,
-) where F: FnMut(usize, usize) {
+) where
+    F: FnMut(usize, usize),
+    T: BoolReal
+{
     // depth-first search
     let mut stack = [0; 64];
     let mut top = -1i32;

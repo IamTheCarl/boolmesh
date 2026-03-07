@@ -1,15 +1,18 @@
 //--- Copyright (C) 2025 Saki Komikado <komietty@gmail.com>,
 //--- This Source Code Form is subject to the terms of the Mozilla Public License v.2.0.
 
+use nalgebra::Vector2;
+
 use super::kernel02::Kernel02;
 use crate::bounds::{BPos, Query};
-use crate::{Real, Vec2, Manifold};
+use crate::common::BoolReal;
+use crate::Manifold;
 
-pub fn winding03(
-    mp: &Manifold,
-    mq: &Manifold,
-    expand: Real,
-    fwd: bool
+pub fn winding03<T: BoolReal>(
+    mp: &Manifold<T>,
+    mq: &Manifold<T>,
+    expand: T,
+    fwd: bool,
 ) -> Vec<i32> {
     let ma = if fwd { mp } else { mq };
     let mb = if fwd { mq } else { mp };
@@ -25,10 +28,21 @@ pub fn winding03(
     };
 
     mb.collider.collision(
-        &ma.ps.iter().enumerate()
-            .map(|(i, p)| Query::Pt(BPos{id: Some(i), pos: Vec2::new(p.x, p.y)}))
+        &ma.ps
+            .iter()
+            .enumerate()
+            .map(|(i, p)| {
+                Query::Pt(BPos {
+                    id: Some(i),
+                    pos: Vector2::new(p.x, p.y),
+                })
+            })
             .collect::<Vec<_>>(),
-        &mut |a, b| if let Some((s, _)) = k02.op(a, b) { w03[a] += s * if fwd { 1 } else { -1 }; }
+        &mut |a, b| {
+            if let Some((s, _)) = k02.op(a, b) {
+                w03[a] += s * if fwd { 1 } else { -1 };
+            }
+        },
     );
 
     w03

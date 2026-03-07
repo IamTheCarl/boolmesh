@@ -1,28 +1,26 @@
-use std::f64::consts::PI;
-
 use geo::{BoundingRect, Coord, LineString, MultiPolygon, Polygon};
+use nalgebra::{Matrix4, Vector2, Vector3};
 use thiserror::Error;
 
 use crate::{
-    common::{Affine3, Vec3u},
+    common::BoolReal,
     manifold::ManifoldError,
     prelude::Manifold,
     triangulation::{ear_clip::EarClip, Pt},
-    Mat2, Mat3, Real, Vec2, Vec3, K_PRECISION,
 };
 
-trait IterStrings {
-    fn strings(&self) -> impl Iterator<Item = &LineString<Real>>;
-    fn coords(&self) -> impl Iterator<Item = &Coord<Real>>;
+trait IterStrings<T: BoolReal> {
+    fn strings(&self) -> impl Iterator<Item = &LineString<T>>;
+    fn coords(&self) -> impl Iterator<Item = &Coord<T>>;
     fn num_coords(&self) -> usize;
 }
 
-impl IterStrings for Polygon<Real> {
-    fn strings(&self) -> impl Iterator<Item = &LineString<Real>> {
+impl<T: BoolReal> IterStrings<T> for Polygon<T> {
+    fn strings(&self) -> impl Iterator<Item = &LineString<T>> {
         [self.exterior()].into_iter().chain(self.interiors())
     }
 
-    fn coords(&self) -> impl Iterator<Item = &Coord<Real>> {
+    fn coords(&self) -> impl Iterator<Item = &Coord<T>> {
         self.strings().flat_map(|string| string.coords())
     }
 
@@ -41,19 +39,20 @@ enum FaceMode {
     Loop,
 }
 
-fn raw_extrude_impl<'s, P>(
+fn raw_extrude_impl<'s, T, P>(
     polygon_iter_builder: impl Fn() -> P,
     divisions: usize,
     face_mode: FaceMode,
-    affine: impl Fn(Real) -> Affine3,
-) -> Result<Manifold, ManifoldError>
+    transform: impl Fn(T) -> Matrix4<T>,
+) -> Result<Manifold<T>, ManifoldError>
 where
-    P: IntoIterator<Item = &'s Polygon<Real>>,
+    T: BoolReal,
+    P: IntoIterator<Item = &'s Polygon<T>>,
 {
-    fn points(polygon: &Polygon<Real>) -> impl Iterator<Item = Vec3> {
+    fn points<T: BoolReal>(polygon: &Polygon<T>) -> impl Iterator<Item = Vector3<T>> {
         polygon
             .coords()
-            .map(|coord| Vec3::new(coord.x, coord.y, 0.0))
+            .map(|coord| Vector3::new(coord.x, coord.y, T::zero()))
     }
 
     let face_indicies = if matches!(face_mode, FaceMode::Close) {
@@ -61,24 +60,24 @@ where
 
         // TODO I dislike collecting the polygons into a throw-away vec like this, but I want to
         // avoid changing the core library for now.
-        let polygons: Vec<Vec<Pt>> = polygon_iter_builder()
+        let polygons: Vec<Vec<Pt<T>>> = polygon_iter_builder()
             .into_iter()
             .map(|polygon| {
                 polygon
                     .coords()
                     .map(|c| {
                         let pt = Pt {
-                            pos: Vec2::new(c.x, c.y),
+                            pos: Vector2::new(c.x, c.y),
                             idx: i,
                         };
                         i += 1;
                         pt
                     })
-                    .collect::<Vec<Pt>>()
+                    .collect::<Vec<Pt<T>>>()
             })
             .collect();
 
-        Some(EarClip::new(&polygons, K_PRECISION).triangulate())
+        Some(EarClip::new(&polygons, T::K_PRECISION).triangulate())
     } else {
         // If we don't need to close the faces, then we don't need to calculate the face indicies.
         None
@@ -99,14 +98,14 @@ where
     if let Some(face_indicies) = face_indicies.as_ref() {
         // Insert bottom vertex references.
         for i in face_indicies.iter() {
-            oft_ts.push(Vec3u::new(i.z, i.y, i.x));
+            oft_ts.push(Vector3::new(i.z, i.y, i.x));
         }
     }
 
     // Incert divisions. Note that the top of the shape counts as a division.
     for layer in 0..divisions {
-        let alpha = (layer + 1) as Real / divisions as Real;
-        let affine = affine(alpha);
+        let alpha = T::cast_from_usize(layer + 1) / T::cast_from_usize(divisions);
+        let transform = transform(alpha);
 
         // Insert the next division's verticies
         let mut polygon_point_offset = 0;
@@ -116,7 +115,7 @@ where
             for (vertex_index, position) in points(polygon).enumerate() {
                 // Conversion is necessary for 32bit support.
                 #[allow(clippy::useless_conversion)]
-                oft_ps.push(affine.transform_point3(position.into()).into());
+                oft_ps.push(transform.transform_point(&position.into()).coords.into());
 
                 // Corners of a quardrangle making up a a side of the extruded shape.
                 // k--l
@@ -127,8 +126,8 @@ where
                 let k = i + points_per_division;
                 let l = j + points_per_division;
 
-                oft_ts.push(Vec3u::new(i, j, k));
-                oft_ts.push(Vec3u::new(k, j, l));
+                oft_ts.push(Vector3::new(i, j, k));
+                oft_ts.push(Vector3::new(k, j, l));
             }
 
             polygon_point_offset += points_in_polygon;
@@ -140,7 +139,7 @@ where
         // We do not need to insert their verticies because they were provided by the final layer of
         // the divisions loop.
         for i in face_indicies.iter() {
-            oft_ts.push(Vec3u::new(
+            oft_ts.push(Vector3::new(
                 i.x + points_per_division * divisions,
                 i.y + points_per_division * divisions,
                 i.z + points_per_division * divisions,
@@ -163,8 +162,8 @@ where
                 let i = vertex_index + ending_offset;
                 let j = (vertex_index + 1) % points_in_polygon + ending_offset;
 
-                oft_ts.push(Vec3u::new(i, j, k));
-                oft_ts.push(Vec3u::new(k, j, l));
+                oft_ts.push(Vector3::new(i, j, k));
+                oft_ts.push(Vector3::new(k, j, l));
             }
 
             polygon_point_offset += points_in_polygon;
@@ -186,34 +185,35 @@ pub enum ExtrusionError {
     Manifold(#[from] ManifoldError),
 }
 
-fn extrude_impl<'s, P>(
+fn extrude_impl<'s, P, T>(
     polygon_iter_builder: impl Fn() -> P,
-    height: Real,
+    height: T,
     divisions: usize,
-    twist_radians: Real,
-    scale_top: Vec2,
-) -> Result<Manifold, ExtrusionError>
+    twist_radians: T,
+    scale_top: Vector2<T>,
+) -> Result<Manifold<T>, ExtrusionError>
 where
-    P: IntoIterator<Item = &'s Polygon<Real>>,
+    T: BoolReal,
+    P: IntoIterator<Item = &'s Polygon<T>>,
 {
-    if height <= 0.0 {
+    if height <= T::zero() {
         return Err(ExtrusionError::InvalidHeight);
     }
 
-    if scale_top.x < 0.0 || scale_top.y < 0.0 {
+    if scale_top.x < T::zero() || scale_top.y < T::zero() {
         return Err(ExtrusionError::InvalidScale);
     }
 
     let manifold = raw_extrude_impl(polygon_iter_builder, divisions, FaceMode::Close, |alpha| {
-        let phi = alpha * twist_radians;
-        let scale = Vec2::splat(1.0).lerp(scale_top, alpha);
-        let translation = Vec3::new(0.0, 0.0, alpha * height);
-        let matrix2 = Mat2::from_scale_angle(scale, phi);
-        let matrix3 = Mat3::from_mat2(matrix2);
-        Affine3 {
-            matrix3,
-            translation,
-        }
+        let scale = Matrix4::new_nonuniform_scaling(
+            &Vector3::from_element(T::one())
+                .lerp(&Vector3::new(scale_top.x, scale_top.y, T::one()), alpha),
+        );
+        let translation =
+            Matrix4::new_translation(&Vector3::new(T::zero(), T::zero(), alpha * height));
+        let rotation = Matrix4::from_euler_angles(T::zero(), T::zero(), alpha * twist_radians);
+
+        scale * rotation * translation
     })?;
 
     Ok(manifold)
@@ -231,15 +231,16 @@ pub enum RevolveError {
     Manifold(#[from] ManifoldError),
 }
 
-fn revolve_impl<'s, P>(
+fn revolve_impl<'s, P, T>(
     polygon_iter_builder: impl Fn() -> P,
     divisions: usize,
-    angle_radians: Real,
-) -> Result<Manifold, RevolveError>
+    angle_radians: T,
+) -> Result<Manifold<T>, RevolveError>
 where
-    P: IntoIterator<Item = &'s Polygon<Real>>,
+    T: BoolReal,
+    P: IntoIterator<Item = &'s Polygon<T>>,
 {
-    if angle_radians <= 0.0 {
+    if angle_radians <= T::zero() {
         return Err(RevolveError::InvalidAngle);
     }
 
@@ -247,76 +248,69 @@ where
     if polygon_iter_builder().into_iter().any(|polygon| {
         polygon
             .bounding_rect()
-            .is_some_and(|rect| rect.min().x < 0.0)
+            .is_some_and(|rect| rect.min().x < T::zero())
     }) {
         return Err(RevolveError::LeftOfYAxis);
     }
 
-    const MAX_ANGLE: Real = PI as Real * 2.0;
+    let max_angle = T::PI * T::cast_from_usize(2);
 
     // Cap the angle at 2Pi.
-    let angle_radians = MAX_ANGLE.min(angle_radians);
+    let angle_radians = max_angle.min(angle_radians);
 
-    let face_mode = if angle_radians < MAX_ANGLE {
+    let face_mode = if angle_radians < max_angle {
         FaceMode::Close
     } else {
         FaceMode::Loop
     };
 
     let manifold = raw_extrude_impl(polygon_iter_builder, divisions, face_mode, |alpha| {
-        let translation = Vec3::new(0.0, 0.0, 0.0);
-
-        #[allow(clippy::useless_conversion)]
-        let matrix3 = Mat3::from_axis_angle(Vec3::Y.into(), -angle_radians * alpha);
-        Affine3 {
-            matrix3,
-            translation,
-        }
+        Matrix4::from_euler_angles(T::zero(), -angle_radians * alpha, T::zero())
     })?;
 
     Ok(manifold)
 }
 
-pub trait ExtrudePoly {
+pub trait ExtrudePoly<T: BoolReal> {
     fn extrude(
         &self,
-        height: Real,
+        height: T,
         divisions: usize,
-        twist_radians: Real,
-        scale_top: Vec2,
-    ) -> Result<Manifold, ExtrusionError>;
+        twist_radians: T,
+        scale_top: Vector2<T>,
+    ) -> Result<Manifold<T>, ExtrusionError>;
 
-    fn revolve(&self, divisions: usize, angle_radians: Real) -> Result<Manifold, RevolveError>;
+    fn revolve(&self, divisions: usize, angle_radians: T) -> Result<Manifold<T>, RevolveError>;
 }
 
-impl ExtrudePoly for Polygon<Real> {
+impl<T: BoolReal> ExtrudePoly<T> for Polygon<T> {
     fn extrude(
         &self,
-        height: Real,
+        height: T,
         divisions: usize,
-        twist_radians: Real,
-        scale_top: Vec2,
-    ) -> Result<Manifold, ExtrusionError> {
+        twist_radians: T,
+        scale_top: Vector2<T>,
+    ) -> Result<Manifold<T>, ExtrusionError> {
         extrude_impl(|| [self], height, divisions, twist_radians, scale_top)
     }
 
-    fn revolve(&self, divisions: usize, angle_radians: Real) -> Result<Manifold, RevolveError> {
+    fn revolve(&self, divisions: usize, angle_radians: T) -> Result<Manifold<T>, RevolveError> {
         revolve_impl(|| [self], divisions, angle_radians)
     }
 }
 
-impl ExtrudePoly for MultiPolygon<Real> {
+impl<T: BoolReal> ExtrudePoly<T> for MultiPolygon<T> {
     fn extrude(
         &self,
-        height: Real,
+        height: T,
         divisions: usize,
-        twist_radians: Real,
-        scale_top: Vec2,
-    ) -> Result<Manifold, ExtrusionError> {
+        twist_radians: T,
+        scale_top: Vector2<T>,
+    ) -> Result<Manifold<T>, ExtrusionError> {
         extrude_impl(|| self.iter(), height, divisions, twist_radians, scale_top)
     }
 
-    fn revolve(&self, divisions: usize, angle_radians: Real) -> Result<Manifold, RevolveError> {
+    fn revolve(&self, divisions: usize, angle_radians: T) -> Result<Manifold<T>, RevolveError> {
         revolve_impl(|| self.iter(), divisions, angle_radians)
     }
 }

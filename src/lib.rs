@@ -19,7 +19,9 @@ use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 use std::collections::VecDeque;
 
+use geo::bool_ops::BoolOpsNum;
 use geo::{LineString, MultiPolygon, Polygon, Coord};
+use nalgebra::Vector3;
 use thiserror::Error;
 
 use crate::boolean03::boolean03;
@@ -31,7 +33,7 @@ use crate::simplification::simplify_topology;
 use crate::triangulation::triangulate;
 use crate::triangulation::TriangulationError;
 
-pub use crate::common::{Mat3, Real, Vec2, Vec3, Vec4, K_PRECISION};
+pub use crate::common::BoolReal;
 
 pub mod prelude {
     pub use crate::common::OpType;
@@ -41,9 +43,11 @@ pub mod prelude {
     };
     pub use crate::compute_boolean;
     pub use crate::manifold::Manifold;
+
+    pub use nalgebra::{self, Vector3, Vector2};
 }
 
-pub fn compute_boolean(mp: &Manifold, mq: &Manifold, op: OpType) -> Result<Manifold, BooleanError> {
+pub fn compute_boolean<T: BoolReal>(mp: &Manifold<T>, mq: &Manifold<T>, op: OpType) -> Result<Manifold<T>, BooleanError> {
     let eps = mp.eps.max(mq.eps);
     let tol = mp.tol.max(mq.tol);
 
@@ -67,7 +71,7 @@ pub fn compute_boolean(mp: &Manifold, mq: &Manifold, op: OpType) -> Result<Manif
         b45.ps,
         trg.hs
             .chunks(3)
-            .map(|hs| Vec3u::new(hs[0].tail, hs[1].tail, hs[2].tail))
+            .map(|hs| Vector3::new(hs[0].tail, hs[1].tail, hs[2].tail))
             .collect(),
         Some(eps),
         Some(tol),
@@ -112,13 +116,13 @@ pub enum ProjectionError {
 /// Projects the manifold onto the XY plane. Rotate the manifold to project onto custom planes.
 /// projection.
 /// * manifold - Input manifold to project
-pub fn compute_projection(manifold: &Manifold) -> Result<MultiPolygon<Real>, ProjectionError> {
+pub fn compute_projection<T: BoolReal + BoolOpsNum>(manifold: &Manifold<T>) -> Result<MultiPolygon<T>, ProjectionError> {
     // TODO there should be a way to directly iterate triangles.
     let mut edge_ids: BTreeMap<usize, VecDeque<usize>> = BTreeMap::new();
 
     trait EdgeMap {
         fn next_starting_edge(&self) -> Option<usize>;
-        fn next_edge(&mut self, manifold: &Manifold, current_edge_id: usize) -> Option<usize>;
+        fn next_edge<T: BoolReal>(&mut self, manifold: &Manifold<T>, current_edge_id: usize) -> Option<usize>;
     }
 
     impl EdgeMap for BTreeMap<usize, VecDeque<usize>> {
@@ -128,7 +132,7 @@ pub fn compute_projection(manifold: &Manifold) -> Result<MultiPolygon<Real>, Pro
             value.copied()
         }
         
-        fn next_edge(&mut self, manifold: &Manifold, current_edge_id: usize) -> Option<usize> {
+        fn next_edge<T: BoolReal>(&mut self, manifold: &Manifold<T>, current_edge_id: usize) -> Option<usize> {
             let current_key = manifold.hs[current_edge_id].head;
             let queue = self.get_mut(&current_key)?;
             let value = queue.pop_back();
@@ -144,8 +148,8 @@ pub fn compute_projection(manifold: &Manifold) -> Result<MultiPolygon<Real>, Pro
         // This filters our faces so that only faces that are connected to another face that is on
         // the opposite side of the manifold are included. This instantly gives us the edge
         // boundaries.
-        if manifold.face_normals[manifold.hs[edge.pair].pair / 3].z <= 0.0
-         && manifold.face_normals[edge.pair / 3].z > 0.0 {
+        if manifold.face_normals[manifold.hs[edge.pair].pair / 3].z <= T::zero()
+         && manifold.face_normals[edge.pair / 3].z > T::zero() {
             edge_ids.entry(edge.tail).or_default().push_front(edge_id);
         }
     }
@@ -194,7 +198,7 @@ pub enum SliceError {
 /// Slice a manifold into a 2D polygon
 /// * manifold - Input manifold to slice
 /// * height - z height to slice at
-pub fn compute_slice(manifold: &Manifold, height: Real) -> Result<MultiPolygon<Real>, SliceError> {
+pub fn compute_slice<T: BoolReal + BoolOpsNum>(manifold: &Manifold<T>, height: T) -> Result<MultiPolygon<T>, SliceError> {
     let mut bounding_box = manifold.bounding_box.clone();
     bounding_box.min.z = height;
     bounding_box.max.z = height;
@@ -213,8 +217,8 @@ pub fn compute_slice(manifold: &Manifold, height: Real) -> Result<MultiPolygon<R
             // filter out the NaNs.
             let min = z_points
                 .clone()
-                .min_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Greater));
-            let max = z_points.max_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Less));
+                .min_by(|a: &T, b: &T| a.partial_cmp(b).unwrap_or(Ordering::Greater));
+            let max = z_points.max_by(|a: &T, b: &T| a.partial_cmp(b).unwrap_or(Ordering::Less));
 
             // If the lowest point is below the height threashold, and the highest point is above,
             // then this triangle intersects with the height plane.
@@ -256,7 +260,7 @@ pub fn compute_slice(manifold: &Manifold, height: Real) -> Result<MultiPolygon<R
             let below = manifold.ps[up.tail];
             let above = manifold.ps[up.head];
             let a = (height - below.z) / (above.z - below.z);
-            let point = below.lerp(above, a);
+            let point = below.lerp(&above, a);
             line_string.push(geo::Coord { x: point.x, y: point.y });
 
             let pair = up.pair;

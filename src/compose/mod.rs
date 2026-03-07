@@ -17,9 +17,9 @@ pub use sphere::*;
 pub use torus::*;
 
 use crate::manifold::ManifoldError;
-use crate::Manifold;
+use crate::{BoolReal, Manifold};
 
-pub fn compose(ms: &Vec<Manifold>) -> Result<Manifold, ManifoldError> {
+pub fn compose<T: BoolReal>(ms: &Vec<Manifold<T>>) -> Result<Manifold<T>, ManifoldError> {
     let mut ps = vec![];
     let mut ts = vec![];
     let mut offset = 0;
@@ -28,28 +28,28 @@ pub fn compose(ms: &Vec<Manifold>) -> Result<Manifold, ManifoldError> {
             ts.push(h.tail + offset);
         }
         for p in m.ps.iter() {
-            ps.push(p.x as f64);
-            ps.push(p.y as f64);
-            ps.push(p.z as f64);
+            ps.push(p.x);
+            ps.push(p.y);
+            ps.push(p.z);
         }
         offset += m.nv;
     }
     Manifold::new(&ps, &ts)
 }
 
-pub fn fractal(
-    hole: &Manifold,
-    holes: &mut Vec<Manifold>,
-    x: f64,
-    y: f64,
-    w: f64,
+pub fn fractal<T: BoolReal>(
+    hole: &Manifold<T>,
+    holes: &mut Vec<Manifold<T>>,
+    x: T,
+    y: T,
+    w: T,
     depth: usize,
     depth_max: usize,
 ) {
-    let w = w / 3.;
+    let w = w / T::cast_from_usize(3);
     let mut m = hole.clone();
-    m.scale(w, w, 1.);
-    m.translate(x, y, 0.);
+    m.scale(w, w, T::one());
+    m.translate(x, y, T::zero());
     holes.push(m);
 
     if depth == depth_max {

@@ -9,7 +9,7 @@ use bevy::pbr::wireframe::{Wireframe, WireframeColor, WireframePlugin};
 use bevy::prelude::*;
 use bevy::render::mesh::{PrimitiveTopology, VertexAttributeValues};
 use bevy_panorbit_camera::{PanOrbitCamera, PanOrbitCameraPlugin};
-use boolmesh::{prelude::*, Real};
+use boolmesh::prelude::*;
 use geo::{BooleanOps, Coord, MultiPolygon, Rect, Translate};
 
 #[derive(Default, Reflect, GizmoConfigGroup)]
@@ -30,13 +30,13 @@ fn setup(
     mut mats: ResMut<Assets<StandardMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>,
 ) {
-    fn square_with_a_bite_out_of_it() -> MultiPolygon<Real> {
+    fn square_with_a_bite_out_of_it() -> MultiPolygon {
         let square = Rect::new(Coord { x: 0.0, y: -0.5 }, Coord { x: 1.0, y: 0.5 }).to_polygon();
         let bite = Rect::new(Coord { x: 0.25, y: -0.25 }, Coord { x: 0.75, y: 0.5 }).to_polygon();
         square.boolean_op(&bite, geo::OpType::Difference)
     }
 
-    fn two_polygons() -> MultiPolygon<Real> {
+    fn two_polygons() -> MultiPolygon {
         let square = Rect::new(Coord { x: -0.5, y: -0.5 }, Coord { x: 0.5, y: 0.5 }).to_polygon();
         let square2 =
             Rect::new(Coord { x: -0.25, y: -0.25 }, Coord { x: 0.25, y: 0.25 }).to_polygon();
@@ -59,50 +59,50 @@ fn setup(
         &mut cmds,
         &mut meshes,
         &mut mats,
-        Vec3::new(-6.0, 0.0, 0.0),
+        Vector3::new(-6.0, 0.0, 0.0),
         || square_with_a_bite_out_of_it().translate(0.5, 0.0),
-        |polygon| polygon.revolve(5, PI as Real * 0.5).unwrap(),
+        |polygon| polygon.revolve(5, PI * 0.5).unwrap(),
     );
 
     spawn_model(
         &mut cmds,
         &mut meshes,
         &mut mats,
-        Vec3::new(-3.0, 0.0, 0.0),
+        Vector3::new(-3.0, 0.0, 0.0),
         square_with_a_bite_out_of_it,
-        |polygon| polygon.revolve(15, PI as Real * 2.0).unwrap(),
+        |polygon| polygon.revolve(15, PI * 2.0).unwrap(),
     );
 
     spawn_model(
         &mut cmds,
         &mut meshes,
         &mut mats,
-        Vec3::new(0.0, 0.0, 0.0),
+        Vector3::new(0.0, 0.0, 0.0),
         || square_with_a_bite_out_of_it().translate(0.5, 0.0),
-        |polygon| polygon.revolve(15, PI as Real * 2.0).unwrap(),
+        |polygon| polygon.revolve(15, PI * 2.0).unwrap(),
     );
 
     spawn_model(
         &mut cmds,
         &mut meshes,
         &mut mats,
-        Vec3::new(3.0, 0.0, 0.0),
+        Vector3::new(3.0, 0.0, 0.0),
         two_polygons,
-        |polygon| polygon.revolve(15, PI as Real * 2.0).unwrap(),
+        |polygon| polygon.revolve(15, PI * 2.0).unwrap(),
     );
 
     spawn_model(
         &mut cmds,
         &mut meshes,
         &mut mats,
-        Vec3::new(6.0, 0.0, 0.0),
+        Vector3::new(6.0, 0.0, 0.0),
         two_polygons,
-        |polygon| polygon.revolve(5, PI as Real * 0.5).unwrap(),
+        |polygon| polygon.revolve(5, PI * 0.5).unwrap(),
     );
 
     cmds.spawn((PointLight::default(), Transform::from_xyz(2., 5., 2.)));
     cmds.spawn((
-        Transform::from_translation(Vec3::new(0., 2., 3.)),
+        Transform::from_translation(Vector3::new(0., 2., 3.).cast::<f32>().into()),
         PanOrbitCamera::default(),
     ));
 }
@@ -111,9 +111,9 @@ fn spawn_model(
     cmds: &mut Commands,
     meshes: &mut ResMut<Assets<Mesh>>,
     mats: &mut ResMut<Assets<StandardMaterial>>,
-    translation: Vec3,
-    build_polygon: impl FnOnce() -> MultiPolygon<Real>,
-    build_model: impl FnOnce(MultiPolygon<Real>) -> Manifold,
+    translation: Vector3<f64>,
+    build_polygon: impl FnOnce() -> MultiPolygon,
+    build_model: impl FnOnce(MultiPolygon) -> Manifold,
 ) {
     let polygon = build_polygon();
 
@@ -130,7 +130,11 @@ fn spawn_model(
         cmds.spawn((
             Mesh3d(meshes.add(mesh).clone()),
             MeshMaterial3d(mats.add(StandardMaterial { ..default() })),
-            Transform::from_translation(translation + Vec3::new(0.0, 0.0, 2.0)),
+            Transform::from_translation(
+                (translation + Vector3::new(0.0, 0.0, 2.0))
+                    .cast::<f32>()
+                    .into(),
+            ),
             Wireframe,
             WireframeColor {
                 color: BLACK.into(),
@@ -164,7 +168,7 @@ fn spawn_model(
     cmds.spawn((
         Mesh3d(meshes.add(m).clone()),
         MeshMaterial3d(mats.add(StandardMaterial { ..default() })),
-        Transform::from_translation(translation),
+        Transform::from_translation(translation.cast::<f32>().into()),
         Wireframe,
         WireframeColor {
             color: BLACK.into(),
