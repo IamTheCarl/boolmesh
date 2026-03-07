@@ -34,7 +34,7 @@ bevy = [
     "dep:tobj",
     "dep:bevy",
     "dep:bevy_panorbit_camera",
-    "dep:geo-bevy",
+    # "dep:geo-bevy",
     "nalgebra/glam029"
 ]
 
@@ -42,6 +42,10 @@ bevy = [
 name = "menger_sponge"
 path = "examples/menger_sponge.rs"
 required-features = ["bevy"]
+
+[profile.perf]
+inherits = "release"
+debug = true
 
 [[example]]
 name = "multiple_models"
