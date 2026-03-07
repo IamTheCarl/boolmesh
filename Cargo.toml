@@ -34,7 +34,7 @@ bevy = [
     "dep:tobj",
     "dep:bevy",
     "dep:bevy_panorbit_camera",
-    # "dep:geo-bevy",
+    "dep:geo-bevy",
     "nalgebra/glam029"
 ]
 
