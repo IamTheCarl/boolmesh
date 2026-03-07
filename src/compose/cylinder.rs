@@ -1,31 +1,41 @@
 //--- Copyright (C) 2025 Saki Komikado <komietty@gmail.com>,
 //--- This Source Code Form is subject to the terms of the Mozilla Public License v.2.0.
 
+use nalgebra::Vector3;
 use thiserror::Error;
 
-use crate::{manifold::ManifoldError, Manifold, Real, Vec3, Vec3u};
-use std::f64::consts::PI;
+use crate::{common::BoolReal, manifold::ManifoldError, Manifold};
 
-pub fn generate_cylinder(
-    r: f64,    // radius
-    h: f64,    // height
+pub fn generate_cylinder<T: BoolReal>(
+    r: T,      // radius
+    h: T,      // height
     d0: usize, // sectors
     d1: usize, // stacks
-) -> Result<Manifold, CylinderError> {
+) -> Result<Manifold<T>, CylinderError> {
     if d0 < 3 || d1 < 1 {
         return Err(CylinderError::InvalidSectorCount);
     }
     let mut ps = vec![];
     let mut ts = vec![];
 
-    ps.push(Vec3::new(0., h as Real * 0.5, 0.));
-    ps.push(Vec3::new(0., -h as Real * 0.5, 0.));
+    ps.push(Vector3::new(
+        T::zero(),
+        h * T::cast_from_f64(0.5),
+        T::zero(),
+    ));
+    ps.push(Vector3::new(
+        T::zero(),
+        -h * T::cast_from_f64(0.5),
+        T::zero(),
+    ));
 
     for i in 0..=d1 {
-        let y = h * 0.5 - (i as f64 / d1 as f64) * h;
+        let y = h * T::cast_from_f64(0.5) - (T::cast_from_usize(i) / T::cast_from_usize(d1)) * h;
         for j in 0..d0 {
-            let (s, c) = (2. * PI * (j as f64 / d0 as f64)).sin_cos();
-            ps.push(Vec3::new((r * c) as Real, y as Real, (r * s) as Real));
+            let (s, c) =
+                (T::cast_from_usize(2) * T::PI * (T::cast_from_usize(j) / T::cast_from_usize(d0)))
+                    .sin_cos();
+            ps.push(Vector3::new(r * c, y, r * s));
         }
     }
 
@@ -35,8 +45,8 @@ pub fn generate_cylinder(
         let v1 = 2 + k;
         let v2 = 2 + d1 * d0 + j;
         let v3 = 2 + d1 * d0 + k;
-        ts.push(Vec3u::new(0, v1, v0));
-        ts.push(Vec3u::new(1, v2, v3));
+        ts.push(Vector3::new(0, v1, v0));
+        ts.push(Vector3::new(1, v2, v3));
     }
 
     for i in 0..d1 {
@@ -44,8 +54,8 @@ pub fn generate_cylinder(
         let r1 = 2 + (i + 1) * d0;
         for j in 0..d0 {
             let k = (j + 1) % d0;
-            ts.push(Vec3u::new(r0 + j, r0 + k, r1 + j));
-            ts.push(Vec3u::new(r0 + k, r1 + k, r1 + j));
+            ts.push(Vector3::new(r0 + j, r0 + k, r1 + j));
+            ts.push(Vector3::new(r0 + k, r1 + k, r1 + j));
         }
     }
 

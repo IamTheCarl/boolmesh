@@ -12,7 +12,7 @@ categories = ["algorithms", "mathematics", "graphics", "simulation", "game-devel
 exclude = ["/examples", ".gitignore"]
 
 [dependencies]
-glam = "0.30.9"
+nalgebra = "0.34"
 rayon =  { version = "1.11.0", optional = true }
 
 tobj = {version = "4.0.3", optional = true}
@@ -22,19 +22,20 @@ thiserror = "2.0.18"
 serde = { version = "1.0.228", features = ["derive"], optional = true }
 geo = "0.32"
 geo-bevy = { version = "8", optional = true }
+num-traits = "0.2"
 
 [features]
 default = []
 verbose = []
-f32 = []
 rayon = ["dep:rayon"]
-serde = ["dep:serde", "glam/serde"]
+serde = ["dep:serde", "nalgebra/serde-serialize"]
 
 bevy = [
     "dep:tobj",
     "dep:bevy",
     "dep:bevy_panorbit_camera",
-    "dep:geo-bevy"
+    "dep:geo-bevy",
+    "nalgebra/glam029"
 ]
 
 [[example]]

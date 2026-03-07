@@ -7,9 +7,11 @@ pub mod hmesh;
 
 use super::hmesh::Hmesh;
 use crate::collider::{morton_code, MortonCollider, K_NO_CODE};
+use crate::common::BoolReal;
 use crate::manifold::hmesh::HmeshError;
-use crate::{next_of, Half, Mat3, Real, Vec3, Vec3u, K_PRECISION};
+use crate::{next_of, Half};
 use bounds::BBox;
+use nalgebra::{Rotation3, Vector3};
 #[cfg(feature = "rayon")]
 use rayon::prelude::*;
 use std::cmp::Ordering;
@@ -18,24 +20,24 @@ use thiserror::Error;
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug)]
-pub struct Manifold {
-    pub ps: Vec<Vec3>,            // positions
-    pub hs: Vec<Half>,            // halfedges
-    pub nv: usize,                // number of vertices
-    pub nf: usize,                // number of faces
-    pub nh: usize,                // number of halfedges
-    pub eps: Real,                // epsilon
-    pub tol: Real,                // tolerance
-    pub bounding_box: BBox,       //
-    pub face_normals: Vec<Vec3>,  //
-    pub vert_normals: Vec<Vec3>,  //
-    pub original_idx: Vec<usize>, //
-    pub collider: MortonCollider, //
-    pub coplanar: Vec<i32>,       // indices of coplanar faces
+pub struct Manifold<T: BoolReal = f64> {
+    pub ps: Vec<Vector3<T>>,           // positions
+    pub hs: Vec<Half>,                 // halfedges
+    pub nv: usize,                     // number of vertices
+    pub nf: usize,                     // number of faces
+    pub nh: usize,                     // number of halfedges
+    pub eps: T,                        // epsilon
+    pub tol: T,                        // tolerance
+    pub bounding_box: BBox<T>,         //
+    pub face_normals: Vec<Vector3<T>>, //
+    pub vert_normals: Vec<Vector3<T>>, //
+    pub original_idx: Vec<usize>,      //
+    pub collider: MortonCollider<T>,   //
+    pub coplanar: Vec<i32>,            // indices of coplanar faces
 }
 
-impl Manifold {
-    pub fn new(pos: &[f64], idx: &[usize]) -> Result<Self, ManifoldError> {
+impl<T: BoolReal> Manifold<T> {
+    pub fn new(pos: &[T], idx: &[usize]) -> Result<Self, ManifoldError> {
         if pos.len() % 3 != 0 {
             return Err(ManifoldError::PositionArrayNotMultipleOf3);
         }
@@ -49,7 +51,7 @@ impl Manifold {
         let mut rmap = vec![0; pos.len()];
 
         for (i, p) in pos.chunks(3).enumerate() {
-            let v = Vec3::new(p[0] as Real, p[1] as Real, p[2] as Real);
+            let v = Vector3::new(p[0], p[1], p[2]);
             let k = (v.x.to_bits(), v.y.to_bits(), v.z.to_bits());
             if let Some(&w) = hash.get(&k) {
                 rmap[i] = w;
@@ -64,7 +66,7 @@ impl Manifold {
         // remove collapsed triangles
         let idx = idx
             .chunks(3)
-            .map(|i| Vec3u::new(rmap[i[0]], rmap[i[1]], rmap[i[2]]))
+            .map(|i| Vector3::new(rmap[i[0]], rmap[i[1]], rmap[i[2]]))
             .filter(|&is| is.x != is.y && is.y != is.z && is.z != is.x)
             .collect::<Vec<_>>();
 
@@ -72,10 +74,10 @@ impl Manifold {
     }
 
     pub fn new_impl(
-        ps: Vec<Vec3>,
-        idx: Vec<Vec3u>,
-        eps: Option<Real>,
-        tol: Option<Real>,
+        ps: Vec<Vector3<T>>,
+        idx: Vec<Vector3<usize>>,
+        eps: Option<T>,
+        tol: Option<T>,
     ) -> Result<Self, ManifoldError> {
         let bb = BBox::new(None, &ps);
         let (mut f_bb, mut f_mt) = compute_face_morton(&ps, &idx, &bb);
@@ -86,8 +88,8 @@ impl Manifold {
             .map(|&i| Half::new(hm.tail[i], hm.head[i], hm.twin[i]))
             .collect::<Vec<_>>();
 
-        let mut e = K_PRECISION * bb.scale();
-        e = if e.is_finite() { e } else { -1. };
+        let mut e = T::K_PRECISION * bb.scale();
+        e = if e.is_finite() { e } else { -T::one() };
         let eps = if let Some(e_) = eps { e_ } else { e };
         let tol = if let Some(t_) = tol { t_ } else { e };
         let collider = MortonCollider::new(&f_bb, &f_mt);
@@ -115,19 +117,19 @@ impl Manifold {
         Ok(mfd)
     }
 
-    pub fn get_indices(&self) -> Vec<Vec3u> {
+    pub fn get_indices(&self) -> Vec<Vector3<usize>> {
         self.hs
             .chunks(3)
-            .map(|cs| Vec3u::new(cs[0].tail, cs[1].tail, cs[2].tail))
+            .map(|cs| Vector3::new(cs[0].tail, cs[1].tail, cs[2].tail))
             .collect()
     }
 
-    pub fn set_epsilon(&mut self, min_epsilon: Real, use_single: bool) {
+    pub fn set_epsilon(&mut self, min_epsilon: T, use_single: bool) {
         let scl = self.bounding_box.scale();
-        let mut e = min_epsilon.max(K_PRECISION * scl);
-        e = if e.is_finite() { e } else { -1. };
+        let mut e = min_epsilon.max(T::K_PRECISION * scl);
+        e = if e.is_finite() { e } else { -T::one() };
         let t = if use_single {
-            e.max(Real::EPSILON * scl)
+            e.max(T::EPSILON * scl)
         } else {
             e
         };
@@ -154,23 +156,23 @@ impl Manifold {
         })
     }
 
-    pub fn translate(&mut self, x: f64, y: f64, z: f64) {
-        let t = Vec3::new(x as Real, y as Real, z as Real);
+    pub fn translate(&mut self, x: T, y: T, z: T) {
+        let t = Vector3::new(x, y, z);
         let p = self.ps.iter().map(|p| *p + t).collect();
         *self = Manifold::new_impl(p, self.get_indices(), None, None).unwrap();
     }
 
-    pub fn rotate(&mut self, x: f64, y: f64, z: f64) {
-        let r = Mat3::from_euler(glam::EulerRot::XYZ, x as Real, y as Real, z as Real);
-        let p = self.ps.iter().map(|p| r * *p).collect();
+    pub fn rotate(&mut self, x: T, y: T, z: T) {
+        let r = Rotation3::from_euler_angles(x, y, z);
+        let p = self.ps.iter().map(|p| r.transform_vector(p)).collect();
         *self = Manifold::new_impl(p, self.get_indices(), None, None).unwrap();
     }
 
-    pub fn scale(&mut self, x: f64, y: f64, z: f64) {
+    pub fn scale(&mut self, x: T, y: T, z: T) {
         let p = self
             .ps
             .iter()
-            .map(|p| Vec3::new(p.x * x as Real, p.y * y as Real, p.z * z as Real))
+            .map(|p| Vector3::new(p.x * x, p.y * y, p.z * z))
             .collect();
         *self = Manifold::new_impl(p, self.get_indices(), None, None).unwrap();
     }
@@ -191,7 +193,11 @@ pub enum ManifoldError {
     Hmesh(#[from] HmeshError),
 }
 
-fn compute_face_morton(pos: &[Vec3], idx: &[Vec3u], bb: &BBox) -> (Vec<BBox>, Vec<u32>) {
+fn compute_face_morton<T: BoolReal>(
+    pos: &[Vector3<T>],
+    idx: &[Vector3<usize>],
+    bb: &BBox<T>,
+) -> (Vec<BBox<T>>, Vec<u32>) {
     let n = idx.len();
     let mut bbs = vec![BBox::default(); n];
     let mut mts = vec![0; n];
@@ -208,7 +214,7 @@ fn compute_face_morton(pos: &[Vec3], idx: &[Vec3u], bb: &BBox) -> (Vec<BBox>, Ve
                 bb_.union(&p0);
                 bb_.union(&p1);
                 bb_.union(&p2);
-                *mt_ = morton_code(&((p0 + p1 + p2) / 3.), bb);
+                *mt_ = morton_code(&((p0 + p1 + p2) / T::cast_from_usize(3)), bb);
             });
     }
 
@@ -221,19 +227,19 @@ fn compute_face_morton(pos: &[Vec3], idx: &[Vec3u], bb: &BBox) -> (Vec<BBox>, Ve
             bbs[i].union(&p0);
             bbs[i].union(&p1);
             bbs[i].union(&p2);
-            mts[i] = morton_code(&((p0 + p1 + p2) / 3.), bb);
+            mts[i] = morton_code(&((p0 + p1 + p2) / T::cast_from_f64(3.0)), bb);
         }
     }
 
     (bbs, mts)
 }
 
-fn sort_faces(
-    pos: &[Vec3],
-    idx: &[Vec3u],
-    face_bboxes: &mut Vec<BBox>,
+fn sort_faces<T: BoolReal>(
+    pos: &[Vector3<T>],
+    idx: &[Vector3<usize>],
+    face_bboxes: &mut Vec<BBox<T>>,
     face_morton: &mut Vec<u32>,
-) -> Result<Hmesh, ManifoldError> {
+) -> Result<Hmesh<T>, ManifoldError> {
     let mut map = (0..face_morton.len()).collect::<Vec<_>>();
     map.sort_by_key(|&i| face_morton[i]);
     *face_bboxes = map
@@ -246,7 +252,12 @@ fn sort_faces(
     Ok(hmesh)
 }
 
-fn compute_coplanar_idx(ps: &[Vec3], ns: &[Vec3], hs: &[Half], tol: Real) -> Vec<i32> {
+fn compute_coplanar_idx<T: BoolReal>(
+    ps: &[Vector3<T>],
+    ns: &[Vector3<T>],
+    hs: &[Half],
+    tol: T,
+) -> Vec<i32> {
     let nt = hs.len() / 3;
     let mut priority = vec![];
     let mut res = vec![-1; nt];
@@ -254,12 +265,12 @@ fn compute_coplanar_idx(ps: &[Vec3], ns: &[Vec3], hs: &[Half], tol: Real) -> Vec
     for t in 0..nt {
         let i = t * 3;
         let area = if hs[i].tail().is_none() {
-            0.
+            T::zero()
         } else {
             let p0 = ps[hs[i].tail];
             let p1 = ps[hs[i].head];
             let p2 = ps[hs[i + 1].head];
-            (p1 - p0).cross(p2 - p0).length_squared()
+            (p1 - p0).cross(&(p2 - p0)).norm_squared()
         };
         priority.push((area, t));
     }
@@ -288,7 +299,7 @@ fn compute_coplanar_idx(ps: &[Vec3], ns: &[Vec3], hs: &[Half], tol: Real) -> Vec
                 continue;
             }
 
-            if (ps[hs[h1].head] - p).dot(n).abs() < tol {
+            if (ps[hs[h1].head] - p).dot(&n).abs() < tol {
                 res[t1] = *t as i32;
                 if interior.last().copied() == Some(hs[h1].pair) {
                     interior.pop();
@@ -302,7 +313,7 @@ fn compute_coplanar_idx(ps: &[Vec3], ns: &[Vec3], hs: &[Half], tol: Real) -> Vec
     res
 }
 
-pub fn cleanup_unused_verts(ps: &mut Vec<Vec3>, hs: &mut Vec<Half>) {
+pub fn cleanup_unused_verts<T: BoolReal>(ps: &mut Vec<Vector3<T>>, hs: &mut Vec<Half>) {
     let bb = BBox::new(None, ps);
     let mt = ps.iter().map(|p| morton_code(p, &bb)).collect::<Vec<_>>();
 

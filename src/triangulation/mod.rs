@@ -6,30 +6,31 @@ pub mod flat_tree;
 pub mod tri_halfs;
 
 use crate::boolean45::Boolean45;
+use crate::common::BoolReal;
 use crate::triangulation::ear_clip::EarClip;
 #[cfg(feature = "rayon")]
 use crate::triangulation::tri_halfs::tri_halfs_multi;
+#[cfg(not(feature = "rayon"))]
 use crate::triangulation::tri_halfs::tri_halfs_single;
-use crate::{
-    compute_aa_proj, get_aa_proj_matrix, is_ccw_3d, Half, Manifold, Real, Tref, Vec2, Vec3, Vec3u,
-};
+use crate::{compute_aa_proj, get_aa_proj_matrix, is_ccw_3d, Half, Manifold, Tref};
+use nalgebra::{Vector2, Vector3};
 #[cfg(feature = "rayon")]
 use rayon::prelude::*;
 use std::collections::{BTreeMap, VecDeque};
 use thiserror::Error;
 
-pub struct Triangulation {
+pub struct Triangulation<T> {
     pub hs: Vec<Half>,
     pub rs: Vec<Tref>,
-    pub ns: Vec<Vec3>,
+    pub ns: Vec<Vector3<T>>,
 }
 
-pub fn triangulate(
-    mp: &Manifold,
-    mq: &Manifold,
-    b45: &Boolean45,
-    eps: Real,
-) -> Result<Triangulation, TriangulationError> {
+pub fn triangulate<T: BoolReal>(
+    mp: &Manifold<T>,
+    mq: &Manifold<T>,
+    b45: &Boolean45<T>,
+    eps: T,
+) -> Result<Triangulation<T>, TriangulationError> {
     #[cfg(feature = "rayon")]
     {
         let (mut ts, mut rs, ns) = (0..b45.hid_per_f.len() - 1)
@@ -82,7 +83,7 @@ pub fn triangulate(
     }
 }
 
-fn process_face(b45: &Boolean45, fid: usize, eps: Real) -> Vec<Vec3u> {
+fn process_face<T: BoolReal>(b45: &Boolean45<T>, fid: usize, eps: T) -> Vec<Vector3<usize>> {
     let e0 = b45.hid_per_f[fid] as usize;
     let e1 = b45.hid_per_f[fid + 1] as usize;
     match e1 - e0 {
@@ -122,7 +123,7 @@ fn assemble_halfs(hs: &[Half], hid_f: &[i32], fid: usize) -> Vec<Vec<usize>> {
     loops
 }
 
-fn single_triangulate(b45: &Boolean45, hid: usize) -> Vec<Vec3u> {
+fn single_triangulate<T: BoolReal>(b45: &Boolean45<T>, hid: usize) -> Vec<Vector3<usize>> {
     let mut idcs = [hid, hid + 1, hid + 2];
     let mut tails = vec![];
     let mut heads = vec![];
@@ -134,15 +135,15 @@ fn single_triangulate(b45: &Boolean45, hid: usize) -> Vec<Vec3u> {
         idcs.swap(1, 2);
     }
 
-    vec![Vec3u::new(
+    vec![Vector3::new(
         b45.hs[idcs[0]].tail,
         b45.hs[idcs[1]].tail,
         b45.hs[idcs[2]].tail,
     )]
 }
 
-fn square_triangulate(b45: &Boolean45, fid: usize, eps: Real) -> Vec<Vec3u> {
-    let ccw = |tri: Vec3u| {
+fn square_triangulate<T: BoolReal>(b45: &Boolean45<T>, fid: usize, eps: T) -> Vec<Vector3<usize>> {
+    let ccw = |tri: Vector3<usize>| {
         is_ccw_3d(
             &b45.ps[b45.hs[tri[0]].tail],
             &b45.ps[b45.hs[tri[1]].tail],
@@ -154,8 +155,14 @@ fn square_triangulate(b45: &Boolean45, fid: usize, eps: Real) -> Vec<Vec3u> {
 
     let q = &assemble_halfs(&b45.hs, &b45.hid_per_f, fid)[0];
     let tris = [
-        vec![Vec3u::new(q[0], q[1], q[2]), Vec3u::new(q[0], q[2], q[3])],
-        vec![Vec3u::new(q[1], q[2], q[3]), Vec3u::new(q[0], q[1], q[3])],
+        vec![
+            Vector3::new(q[0], q[1], q[2]),
+            Vector3::new(q[0], q[2], q[3]),
+        ],
+        vec![
+            Vector3::new(q[1], q[2], q[3]),
+            Vector3::new(q[0], q[1], q[3]),
+        ],
     ];
     let mut choice: usize = 0;
 
@@ -164,18 +171,18 @@ fn square_triangulate(b45: &Boolean45, fid: usize, eps: Real) -> Vec<Vec3u> {
     } else if ccw(tris[1][0]) && ccw(tris[1][1]) {
         let diag0 = b45.ps[b45.hs[q[0]].tail] - b45.ps[b45.hs[q[2]].tail];
         let diag1 = b45.ps[b45.hs[q[1]].tail] - b45.ps[b45.hs[q[3]].tail];
-        if diag0.length() > diag1.length() {
+        if diag0.norm() > diag1.norm() {
             choice = 1;
         }
     }
 
     tris[choice]
         .iter()
-        .map(|t| Vec3u::new(b45.hs[t.x].tail, b45.hs[t.y].tail, b45.hs[t.z].tail))
+        .map(|t| Vector3::new(b45.hs[t.x].tail, b45.hs[t.y].tail, b45.hs[t.z].tail))
         .collect()
 }
 
-fn general_triangulate(b45: &Boolean45, fid: usize, eps: Real) -> Vec<Vec3u> {
+fn general_triangulate<T: BoolReal>(b45: &Boolean45<T>, fid: usize, eps: T) -> Vec<Vector3<usize>> {
     let proj = get_aa_proj_matrix(&b45.ns[fid]);
     let loops = assemble_halfs(&b45.hs, &b45.hid_per_f, fid);
     let polys = loops
@@ -194,17 +201,17 @@ fn general_triangulate(b45: &Boolean45, fid: usize, eps: Real) -> Vec<Vec3u> {
     EarClip::new(&polys, eps)
         .triangulate()
         .iter()
-        .map(|t| Vec3u::new(b45.hs[t.x].tail, b45.hs[t.y].tail, b45.hs[t.z].tail))
+        .map(|t| Vector3::new(b45.hs[t.x].tail, b45.hs[t.y].tail, b45.hs[t.z].tail))
         .collect()
 }
 
 #[derive(Debug, Clone)]
-pub struct Pt {
-    pub pos: Vec2,
+pub struct Pt<T: BoolReal> {
+    pub pos: Vector2<T>,
     pub idx: usize,
 }
 
-fn update_reference(mp: &Manifold, mq: &Manifold, rs: &mut [Tref]) {
+fn update_reference<T: BoolReal>(mp: &Manifold<T>, mq: &Manifold<T>, rs: &mut [Tref]) {
     for r in rs.iter_mut() {
         let fid = r.fid;
         let pq = r.mid == 0;

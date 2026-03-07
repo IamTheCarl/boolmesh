@@ -9,7 +9,7 @@ use bevy::pbr::wireframe::{Wireframe, WireframeColor, WireframePlugin};
 use bevy::prelude::*;
 use bevy::render::mesh::{PrimitiveTopology, VertexAttributeValues};
 use bevy_panorbit_camera::{PanOrbitCamera, PanOrbitCameraPlugin};
-use boolmesh::{prelude::*, Real, Vec2};
+use boolmesh::prelude::*;
 use geo::{BooleanOps, Coord, MultiPolygon, Rect, Translate};
 
 #[derive(Default, Reflect, GizmoConfigGroup)]
@@ -34,34 +34,23 @@ fn setup(
         &mut cmds,
         &mut meshes,
         &mut mats,
-        Vec3::new(-6.0, 0.0, 0.0),
+        Vector3::new(-6.0, 0.0, 0.0),
         || {
             let square = Rect::new(Coord { x: -0.5, y: -0.5 }, Coord { x: 0.5, y: 0.5 });
             square.to_polygon().into()
         },
-        |polygon| polygon.extrude(1.0, 1, 0.0, Vec2::new(1.0, 1.0)).unwrap(),
-    );
-
-    spawn_model(
-        &mut cmds,
-        &mut meshes,
-        &mut mats,
-        Vec3::new(-4.0, 0.0, 0.0),
-        || {
-            let square =
-                Rect::new(Coord { x: -0.5, y: -0.5 }, Coord { x: 0.5, y: 0.5 }).to_polygon();
-            let inner_square =
-                Rect::new(Coord { x: -0.25, y: -0.25 }, Coord { x: 0.25, y: 0.25 }).to_polygon();
-            square.boolean_op(&inner_square, geo::OpType::Difference)
+        |polygon| {
+            polygon
+                .extrude(1.0, 1, 0.0, Vector2::new(1.0, 1.0))
+                .unwrap()
         },
-        |polygon| polygon.extrude(1.0, 1, 0.0, Vec2::new(1.0, 1.0)).unwrap(),
     );
 
     spawn_model(
         &mut cmds,
         &mut meshes,
         &mut mats,
-        Vec3::new(-2.0, 0.0, 0.0),
+        Vector3::new(-4.0, 0.0, 0.0),
         || {
             let square =
                 Rect::new(Coord { x: -0.5, y: -0.5 }, Coord { x: 0.5, y: 0.5 }).to_polygon();
@@ -71,7 +60,7 @@ fn setup(
         },
         |polygon| {
             polygon
-                .extrude(1.0, 20, PI as Real, Vec2::new(1.0, 1.0))
+                .extrude(1.0, 1, 0.0, Vector2::new(1.0, 1.0))
                 .unwrap()
         },
     );
@@ -80,37 +69,7 @@ fn setup(
         &mut cmds,
         &mut meshes,
         &mut mats,
-        Vec3::new(0.0, 0.0, 0.0),
-        || {
-            let square =
-                Rect::new(Coord { x: -0.5, y: -0.5 }, Coord { x: 0.5, y: 0.5 }).to_polygon();
-            let inner_square =
-                Rect::new(Coord { x: -0.25, y: -0.25 }, Coord { x: 0.25, y: 0.25 }).to_polygon();
-            square.boolean_op(&inner_square, geo::OpType::Difference)
-        },
-        |polygon| polygon.extrude(1.0, 1, 0.0, Vec2::new(0.5, 0.5)).unwrap(),
-    );
-
-    spawn_model(
-        &mut cmds,
-        &mut meshes,
-        &mut mats,
-        Vec3::new(2.0, 0.0, 0.0),
-        || {
-            let square =
-                Rect::new(Coord { x: -0.5, y: -0.5 }, Coord { x: 0.5, y: 0.5 }).to_polygon();
-            let inner_square =
-                Rect::new(Coord { x: -0.25, y: -0.25 }, Coord { x: 0.25, y: 0.25 }).to_polygon();
-            square.boolean_op(&inner_square, geo::OpType::Difference)
-        },
-        |polygon| polygon.extrude(1.0, 1, 0.0, Vec2::new(0.0, 0.0)).unwrap(),
-    );
-
-    spawn_model(
-        &mut cmds,
-        &mut meshes,
-        &mut mats,
-        Vec3::new(4.0, 0.0, 0.0),
+        Vector3::new(-2.0, 0.0, 0.0),
         || {
             let square =
                 Rect::new(Coord { x: -0.5, y: -0.5 }, Coord { x: 0.5, y: 0.5 }).to_polygon();
@@ -120,7 +79,7 @@ fn setup(
         },
         |polygon| {
             polygon
-                .extrude(1.0, 50, PI as Real, Vec2::new(0.0, 0.0))
+                .extrude(1.0, 20, PI, Vector2::new(1.0, 1.0))
                 .unwrap()
         },
     );
@@ -129,7 +88,64 @@ fn setup(
         &mut cmds,
         &mut meshes,
         &mut mats,
-        Vec3::new(6.0, 0.0, 0.0),
+        Vector3::new(0.0, 0.0, 0.0),
+        || {
+            let square =
+                Rect::new(Coord { x: -0.5, y: -0.5 }, Coord { x: 0.5, y: 0.5 }).to_polygon();
+            let inner_square =
+                Rect::new(Coord { x: -0.25, y: -0.25 }, Coord { x: 0.25, y: 0.25 }).to_polygon();
+            square.boolean_op(&inner_square, geo::OpType::Difference)
+        },
+        |polygon| {
+            polygon
+                .extrude(1.0, 1, 0.0, Vector2::new(0.5, 0.5))
+                .unwrap()
+        },
+    );
+
+    spawn_model(
+        &mut cmds,
+        &mut meshes,
+        &mut mats,
+        Vector3::new(2.0, 0.0, 0.0),
+        || {
+            let square =
+                Rect::new(Coord { x: -0.5, y: -0.5 }, Coord { x: 0.5, y: 0.5 }).to_polygon();
+            let inner_square =
+                Rect::new(Coord { x: -0.25, y: -0.25 }, Coord { x: 0.25, y: 0.25 }).to_polygon();
+            square.boolean_op(&inner_square, geo::OpType::Difference)
+        },
+        |polygon| {
+            polygon
+                .extrude(1.0, 1, 0.0, Vector2::new(0.0, 0.0))
+                .unwrap()
+        },
+    );
+
+    spawn_model(
+        &mut cmds,
+        &mut meshes,
+        &mut mats,
+        Vector3::new(4.0, 0.0, 0.0),
+        || {
+            let square =
+                Rect::new(Coord { x: -0.5, y: -0.5 }, Coord { x: 0.5, y: 0.5 }).to_polygon();
+            let inner_square =
+                Rect::new(Coord { x: -0.25, y: -0.25 }, Coord { x: 0.25, y: 0.25 }).to_polygon();
+            square.boolean_op(&inner_square, geo::OpType::Difference)
+        },
+        |polygon| {
+            polygon
+                .extrude(1.0, 50, PI, Vector2::new(0.0, 0.0))
+                .unwrap()
+        },
+    );
+
+    spawn_model(
+        &mut cmds,
+        &mut meshes,
+        &mut mats,
+        Vector3::new(6.0, 0.0, 0.0),
         || {
             let square =
                 Rect::new(Coord { x: -0.5, y: -0.5 }, Coord { x: 0.5, y: 0.5 }).to_polygon();
@@ -147,12 +163,16 @@ fn setup(
 
             square.boolean_op(&square2, geo::OpType::Union)
         },
-        |polygon| polygon.extrude(1.0, 1, 0.0, Vec2::new(1.0, 1.0)).unwrap(),
+        |polygon| {
+            polygon
+                .extrude(1.0, 1, 0.0, Vector2::new(1.0, 1.0))
+                .unwrap()
+        },
     );
 
     cmds.spawn((PointLight::default(), Transform::from_xyz(2., 5., 2.)));
     cmds.spawn((
-        Transform::from_translation(Vec3::new(0., 2., 3.)),
+        Transform::from_translation(Vector3::new(0., 2., 3.).into()),
         PanOrbitCamera::default(),
     ));
 }
@@ -161,9 +181,9 @@ fn spawn_model(
     cmds: &mut Commands,
     meshes: &mut ResMut<Assets<Mesh>>,
     mats: &mut ResMut<Assets<StandardMaterial>>,
-    translation: Vec3,
-    build_polygon: impl FnOnce() -> MultiPolygon<Real>,
-    build_model: impl FnOnce(MultiPolygon<Real>) -> Manifold,
+    translation: Vector3<f64>,
+    build_polygon: impl FnOnce() -> MultiPolygon,
+    build_model: impl FnOnce(MultiPolygon) -> Manifold,
 ) {
     let polygon = build_polygon();
 
@@ -180,7 +200,11 @@ fn spawn_model(
         cmds.spawn((
             Mesh3d(meshes.add(mesh).clone()),
             MeshMaterial3d(mats.add(StandardMaterial { ..default() })),
-            Transform::from_translation(translation + Vec3::new(0.0, 0.0, 2.0)),
+            Transform::from_translation(
+                (translation + Vector3::new(0.0, 0.0, 2.0))
+                    .cast::<f32>()
+                    .into(),
+            ),
             Wireframe,
             WireframeColor {
                 color: BLACK.into(),
@@ -214,7 +238,7 @@ fn spawn_model(
     cmds.spawn((
         Mesh3d(meshes.add(m).clone()),
         MeshMaterial3d(mats.add(StandardMaterial { ..default() })),
-        Transform::from_translation(translation),
+        Transform::from_translation(translation.cast::<f32>().into()),
         Wireframe,
         WireframeColor {
             color: BLACK.into(),
