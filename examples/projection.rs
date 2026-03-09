@@ -46,10 +46,10 @@ fn setup(
     )
     .unwrap();
 
-    model.translate(-6.0, 0.0, 0.0);
+    model = model.translate(-6.0, 0.0, 0.0).unwrap();
     for _ in 0..5 {
-        model.rotate(PI / 4.0, 0.0, 0.0);
-        model.translate(2.0, 0.0, 0.0);
+        model = model.rotate(PI / 4.0, 0.0, 0.0).unwrap();
+        model = model.translate(2.0, 0.0, 0.0).unwrap();
 
         let mut m = Mesh::new(
             PrimitiveTopology::TriangleList,

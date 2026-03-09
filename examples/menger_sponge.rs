@@ -88,7 +88,7 @@ fn setup(
 pub fn menger_sponge(n: usize) -> Manifold {
     let res = generate_cube().unwrap();
     let mut holes = vec![];
-    fractal(&res, &mut holes, 0., 0., 1., 1, n);
+    fractal(&res, &mut holes, 0., 0., 1., 1, n).unwrap();
     let holes_z = compose(&holes).unwrap();
 
     let rot = |x: f64, y: f64, z: f64| {

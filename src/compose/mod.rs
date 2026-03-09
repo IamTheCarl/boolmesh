@@ -45,15 +45,15 @@ pub fn fractal<T: BoolReal>(
     w: T,
     depth: usize,
     depth_max: usize,
-) {
+) -> Result<(), ManifoldError> {
     let w = w / T::cast_from_usize(3);
     let mut m = hole.clone();
-    m.scale(w, w, T::one());
-    m.translate(x, y, T::zero());
+    m = m.scale(w, w, T::one())?;
+    m = m.translate(x, y, T::zero())?;
     holes.push(m);
 
     if depth == depth_max {
-        return;
+        return Ok(());
     }
 
     for xy in [
@@ -66,6 +66,8 @@ pub fn fractal<T: BoolReal>(
         (x + w, y - w),
         (x, y - w),
     ] {
-        fractal(hole, holes, xy.0, xy.1, w, depth + 1, depth_max);
+        fractal(hole, holes, xy.0, xy.1, w, depth + 1, depth_max)?;
     }
+
+    Ok(())
 }

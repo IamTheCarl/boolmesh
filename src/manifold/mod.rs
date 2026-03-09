@@ -11,7 +11,7 @@ use crate::common::BoolReal;
 use crate::manifold::hmesh::HmeshError;
 use crate::{next_of, Half};
 use bounds::BBox;
-use nalgebra::{Rotation3, Vector3};
+use nalgebra::{Matrix4, Point3, Rotation3, Vector3};
 #[cfg(feature = "rayon")]
 use rayon::prelude::*;
 use std::cmp::Ordering;
@@ -156,25 +156,38 @@ impl<T: BoolReal> Manifold<T> {
         })
     }
 
-    pub fn translate(&mut self, x: T, y: T, z: T) {
+    pub fn transform(&self, transformation: Matrix4<T>) -> Result<Manifold<T>, ManifoldError> {
+        let p = self
+            .ps
+            .iter()
+            .map(|p| {
+                transformation
+                    .transform_point(&Point3 { coords: *p })
+                    .coords
+            })
+            .collect();
+        Manifold::new_impl(p, self.get_indices(), None, None)
+    }
+
+    pub fn translate(&self, x: T, y: T, z: T) -> Result<Manifold<T>, ManifoldError> {
         let t = Vector3::new(x, y, z);
         let p = self.ps.iter().map(|p| *p + t).collect();
-        *self = Manifold::new_impl(p, self.get_indices(), None, None).unwrap();
+        Manifold::new_impl(p, self.get_indices(), None, None)
     }
 
-    pub fn rotate(&mut self, x: T, y: T, z: T) {
+    pub fn rotate(&mut self, x: T, y: T, z: T) -> Result<Manifold<T>, ManifoldError> {
         let r = Rotation3::from_euler_angles(x, y, z);
         let p = self.ps.iter().map(|p| r.transform_vector(p)).collect();
-        *self = Manifold::new_impl(p, self.get_indices(), None, None).unwrap();
+        Manifold::new_impl(p, self.get_indices(), None, None)
     }
 
-    pub fn scale(&mut self, x: T, y: T, z: T) {
+    pub fn scale(&mut self, x: T, y: T, z: T) -> Result<Manifold<T>, ManifoldError> {
         let p = self
             .ps
             .iter()
             .map(|p| Vector3::new(p.x * x, p.y * y, p.z * z))
             .collect();
-        *self = Manifold::new_impl(p, self.get_indices(), None, None).unwrap();
+        Manifold::new_impl(p, self.get_indices(), None, None)
     }
 }
 
