@@ -1,11 +1,11 @@
 //--- Copyright (C) 2025 Saki Komikado <komietty@gmail.com>,
 //--- This Source Code Form is subject to the terms of the Mozilla Public License v.2.0.
 
+use fxhash::FxHashMap;
 use nalgebra::Vector3;
 
 use super::{pair_up, tail_of, update_vid_around_star};
 use crate::{common::BoolReal, next_of, Half, Tref};
-use std::collections::HashMap;
 
 fn dedupe_edge<T: BoolReal>(
     ps: &mut Vec<Vector3<T>>,
@@ -130,7 +130,7 @@ pub fn dedupe_edges<T: BoolReal>(
                 continue;
             }
             let mut vec = Vec::<(usize, usize)>::new();
-            let mut map = HashMap::<usize, usize>::new();
+            let mut map = FxHashMap::<usize, usize>::default();
 
             // 1: for the star around tail(i), find the minimal index for each head vertex.
             let mut cur = hid;

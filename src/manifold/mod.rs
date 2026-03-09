@@ -11,6 +11,7 @@ use crate::common::BoolReal;
 use crate::manifold::hmesh::HmeshError;
 use crate::{next_of, Half};
 use bounds::BBox;
+use fxhash::FxBuildHasher;
 use nalgebra::{Matrix4, Point3, Rotation3, Vector3};
 #[cfg(feature = "rayon")]
 use rayon::prelude::*;
@@ -46,7 +47,7 @@ impl<T: BoolReal> Manifold<T> {
         }
 
         // dedup vertices
-        let mut hash = HashMap::with_capacity(pos.len() / 3);
+        let mut hash = HashMap::with_capacity_and_hasher(pos.len() / 3, FxBuildHasher::default());
         let mut weld = Vec::with_capacity(pos.len() / 3);
         let mut rmap = vec![0; pos.len()];
 

@@ -1,6 +1,7 @@
 //--- Copyright (C) 2025 Saki Komikado <komietty@gmail.com>,
 //--- This Source Code Form is subject to the terms of the Mozilla Public License v.2.0.
 
+use fxhash::FxHashMap;
 use nalgebra::Vector3;
 
 use crate::boolean03::Boolean03;
@@ -8,7 +9,6 @@ use crate::bounds::BBox;
 use crate::common::BoolReal;
 use crate::OpType;
 use crate::{face_of, Half, Manifold, Tref};
-use std::collections::HashMap;
 use std::mem;
 
 fn duplicate_verts<T: BoolReal>(
@@ -147,8 +147,8 @@ fn add_new_edge_verts<T: BoolReal>(
     i12: &[i32],
     v12_r: &[i32],
     hs_p: &[Half],
-    pt_old: &mut HashMap<usize, Vec<EdgePt<T>>>,
-    pt_new: &mut HashMap<(usize, usize), Vec<EdgePt<T>>>,
+    pt_old: &mut FxHashMap<usize, Vec<EdgePt<T>>>,
+    pt_new: &mut FxHashMap<(usize, usize), Vec<EdgePt<T>>>,
     fwd: bool,
     oft: usize,
 ) {
@@ -241,17 +241,17 @@ fn pair_up<T: BoolReal>(pts: &mut [EdgePt<T>]) -> Vec<Half> {
 }
 
 fn append_partial_edges<T: BoolReal>(
-    i03: &[i32],                               //
-    hs_p: &[Half],                             // halfedges in mfd_p
-    ps_p: &[Vector3<T>],                       //
-    ps_r: &[Vector3<T>],                       // the vert pos of mfd_r, already fulfilled so far
-    vid_p2r: &[i32],                           // map from vid in mfd_p to vid in mfd_r
-    fid_p2r: &[i32],                           // map from fid in mfd_p to fid in mfd_r
-    fwd: bool,                                 //
-    hs_r: &mut [Half],                         // halfedge data of mfd_r, empty yet
-    rs_r: &mut [Tref],                         // map from halfedge in mfd_r to triangle info
-    pt_p: &mut HashMap<usize, Vec<EdgePt<T>>>, //
-    face_ptr_r: &mut [i32],                    //
+    i03: &[i32],                                 //
+    hs_p: &[Half],                               // halfedges in mfd_p
+    ps_p: &[Vector3<T>],                         //
+    ps_r: &[Vector3<T>],                         // the vert pos of mfd_r, already fulfilled so far
+    vid_p2r: &[i32],                             // map from vid in mfd_p to vid in mfd_r
+    fid_p2r: &[i32],                             // map from fid in mfd_p to fid in mfd_r
+    fwd: bool,                                   //
+    hs_r: &mut [Half],                           // halfedge data of mfd_r, empty yet
+    rs_r: &mut [Tref],                           // map from halfedge in mfd_r to triangle info
+    pt_p: &mut FxHashMap<usize, Vec<EdgePt<T>>>, //
+    face_ptr_r: &mut [i32],                      //
     whole_flag: &mut [bool], // a flag to find out a halfedge from mfd_p is entirely usable in mfd_r
 ) {
     for (hid_p, pt) in pt_p {
@@ -328,7 +328,7 @@ fn append_new_edges<T: BoolReal>(
     fid_pq2r: &[i32],       //
     nf_p: usize,            // num of faces in mfd_p
     face_ptr_r: &mut [i32], //
-    pt_new: &mut HashMap<(usize, usize), Vec<EdgePt<T>>>, //
+    pt_new: &mut FxHashMap<(usize, usize), Vec<EdgePt<T>>>, //
     hs_r: &mut [Half],      // the halfedge data of mfd_r, empty yet
     rs_r: &mut [Tref],      //
 ) {
@@ -509,9 +509,9 @@ pub fn boolean45<T: BoolReal>(
         duplicate_verts(&i21, &vid_21r, &b03.v21, &mut ps_r, i as usize);
     }
 
-    let mut pt_p = HashMap::new();
-    let mut pt_q = HashMap::new();
-    let mut pt_new = HashMap::new();
+    let mut pt_p = FxHashMap::default();
+    let mut pt_q = FxHashMap::default();
+    let mut pt_new = FxHashMap::default();
     add_new_edge_verts(
         &b03.p1q2,
         &i12,

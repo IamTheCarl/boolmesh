@@ -1,12 +1,12 @@
 //--- Copyright (C) 2025 Saki Komikado <komietty@gmail.com>,
 //--- This Source Code Form is subject to the terms of the Mozilla Public License v.2.0.
 
+use fxhash::FxHashMap;
 use nalgebra::Vector3;
 use thiserror::Error;
 
 use crate::common::BoolReal;
 use crate::{manifold::ManifoldError, Manifold};
-use std::collections::HashMap;
 
 pub fn generate_uv_sphere<T: BoolReal>(
     d0: usize, // sectors
@@ -96,12 +96,12 @@ pub fn generate_icosphere<T: BoolReal>(subdivisions: u32) -> Result<Manifold<T>,
         Vector3::new(9, 8, 1),
     ];
 
-    let mut cache = HashMap::new();
+    let mut cache = FxHashMap::default();
 
     let get_midpoint = |vid1: usize,
                         vid2: usize,
                         verts: &mut Vec<Vector3<T>>,
-                        cache: &mut HashMap<(usize, usize), usize>| {
+                        cache: &mut FxHashMap<(usize, usize), usize>| {
         let e = if vid1 < vid2 {
             (vid1, vid2)
         } else {

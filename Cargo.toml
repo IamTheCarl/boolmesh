@@ -23,6 +23,7 @@ serde = { version = "1.0.228", features = ["derive"], optional = true }
 geo = "0.32"
 geo-bevy = { version = "8", optional = true }
 num-traits = "0.2"
+fxhash = "0.2.1"
 
 [features]
 default = []
