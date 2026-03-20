@@ -141,7 +141,7 @@ pub enum OpType {
 }
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Half {
     pub tail: usize,
     pub head: usize,
