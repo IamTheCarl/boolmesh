@@ -176,13 +176,13 @@ impl<T: BoolReal> Manifold<T> {
         Manifold::new_impl(p, self.get_indices(), None, None)
     }
 
-    pub fn rotate(&mut self, x: T, y: T, z: T) -> Result<Manifold<T>, ManifoldError> {
+    pub fn rotate(&self, x: T, y: T, z: T) -> Result<Manifold<T>, ManifoldError> {
         let r = Rotation3::from_euler_angles(x, y, z);
         let p = self.ps.iter().map(|p| r.transform_vector(p)).collect();
         Manifold::new_impl(p, self.get_indices(), None, None)
     }
 
-    pub fn scale(&mut self, x: T, y: T, z: T) -> Result<Manifold<T>, ManifoldError> {
+    pub fn scale(&self, x: T, y: T, z: T) -> Result<Manifold<T>, ManifoldError> {
         let p = self
             .ps
             .iter()
