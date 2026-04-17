@@ -6,7 +6,7 @@ use num_traits::NumCast;
 
 // TODO rename this once you have removed all old references to the "Real" type.
 pub trait BoolReal:
-    std::fmt::Debug + RealField + geo::CoordNum + Copy + PartialOrd + PartialEq
+    std::fmt::Debug + RealField + geo::CoordNum + geo::GeoNum + Copy + PartialOrd + PartialEq
 {
     const K_PRECISION: Self;
     const K_BEST: Self;

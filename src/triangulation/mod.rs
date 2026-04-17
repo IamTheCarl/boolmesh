@@ -93,7 +93,7 @@ fn process_face<T: BoolReal>(b45: &Boolean45<T>, fid: usize, eps: T) -> Vec<Vect
     }
 }
 
-fn assemble_halfs(hs: &[Half], hid_f: &[i32], fid: usize) -> Vec<Vec<usize>> {
+pub fn assemble_halfs(hs: &[Half], hid_f: &[i32], fid: usize) -> Vec<Vec<usize>> {
     let bgn = hid_f[fid] as usize;
     let end = hid_f[fid + 1] as usize;
     let num = end - bgn;

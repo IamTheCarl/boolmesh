@@ -114,77 +114,98 @@ pub enum ProjectionError {
 }
 
 /// Projects the manifold onto the XY plane. Rotate the manifold to project onto custom planes.
-/// projection.
 /// * manifold - Input manifold to project
 pub fn compute_projection<T: BoolReal + BoolOpsNum>(manifold: &Manifold<T>) -> Result<MultiPolygon<T>, ProjectionError> {
-    // TODO there should be a way to directly iterate triangles.
     let mut edge_ids: BTreeMap<usize, VecDeque<usize>> = BTreeMap::new();
 
     trait EdgeMap {
-        fn next_starting_edge(&self) -> Option<usize>;
+        fn next_starting_edge(&mut self) -> Option<usize>;
         fn next_edge<T: BoolReal>(&mut self, manifold: &Manifold<T>, current_edge_id: usize) -> Option<usize>;
     }
 
     impl EdgeMap for BTreeMap<usize, VecDeque<usize>> {
-        fn next_starting_edge(&self) -> Option<usize> {
-            let (_edge_id, queue) = self.first_key_value()?;
-            let value = queue.back();
-            value.copied()
+        fn next_starting_edge(&mut self) -> Option<usize> {
+            let (&first_key, queue) = self.first_key_value()?;
+            let value = queue.back().copied();
+            let q = self.get_mut(&first_key).unwrap();
+            q.pop_back();
+            if q.is_empty() {
+                self.remove(&first_key);
+            }
+            value
         }
-        
+
         fn next_edge<T: BoolReal>(&mut self, manifold: &Manifold<T>, current_edge_id: usize) -> Option<usize> {
-            let current_key = manifold.hs[current_edge_id].head;
-            let queue = self.get_mut(&current_key)?;
+            let next_tail = manifold.hs[current_edge_id].head;
+            let queue = self.get_mut(&next_tail)?;
             let value = queue.pop_back();
             if queue.is_empty() {
-                self.remove(&current_key);
+                self.remove(&next_tail);
             }
-
             value
         }
     }
 
     for (edge_id, edge) in manifold.hs.iter().enumerate() {
-        // This filters our faces so that only faces that are connected to another face that is on
-        // the opposite side of the manifold are included. This instantly gives us the edge
-        // boundaries.
-        if manifold.face_normals[manifold.hs[edge.pair].pair / 3].z <= T::zero()
-         && manifold.face_normals[edge.pair / 3].z > T::zero() {
-            edge_ids.entry(edge.tail).or_default().push_front(edge_id);
+        // Each edge appears twice in the half-edge structure (as a pair),
+        // so skip one of each pair to avoid duplicates.
+        if edge_id > edge.pair {
+            continue;
+        }
+
+        let face_a = edge_id / 3;
+        let face_b = edge.pair / 3;
+        let na_z = manifold.face_normals[face_a].z;
+        let nb_z = manifold.face_normals[face_b].z;
+
+        // Treat NaN and non-finite normals (e.g. degenerate triangles) as non-upward-facing.
+        let na_up = na_z.to_f64().is_finite() && na_z > T::zero();
+        let nb_up = nb_z.to_f64().is_finite() && nb_z > T::zero();
+
+        // Silhouette edges are those where exactly one adjacent face points upward.
+        if na_up != nb_up {
+            if nb_up {
+                // The pair's face points up — store the pair for consistent winding.
+                edge_ids.entry(manifold.hs[edge.pair].tail).or_default().push_front(edge.pair);
+            } else {
+                edge_ids.entry(edge.tail).or_default().push_front(edge_id);
+            }
         }
     }
 
     let mut polygons = Vec::new();
     while let Some(first_edge_id) = edge_ids.next_starting_edge() {
         let mut current_edge_id = first_edge_id;
-        let mut line_string = Vec::new();
+        let first_vertex = manifold.hs[first_edge_id].tail;
+        let first_point = manifold.ps[manifold.hs[first_edge_id].head];
+        let mut line_string = vec![Coord { x: first_point.x, y: first_point.y }];
 
         loop {
-            let point = manifold.ps[manifold.hs[current_edge_id].head];
-            line_string.push(Coord { x: point.x, y: point.y });
-
-            let next_edge_id =  edge_ids.next_edge(manifold, current_edge_id).expect("Non-manafold edge");
-            
-            if next_edge_id != first_edge_id {
-                current_edge_id = next_edge_id;
-            } else {
-                // We've come back to our initial point.
+            // If the next step would bring us back to the start vertex,
+            // we're done — don't try to look it up in the map.
+            if manifold.hs[current_edge_id].head == first_vertex {
                 break;
             }
+        
+            let next_edge_id = edge_ids
+                .next_edge(manifold, current_edge_id)
+                .expect("Non-manifold edge");
+        
+            current_edge_id = next_edge_id;
+        
+            let point = manifold.ps[manifold.hs[current_edge_id].head];
+            line_string.push(Coord { x: point.x, y: point.y });
         }
 
         let mut line_string = LineString(line_string);
         line_string.close();
-        let raw_polygon = Polygon::new(line_string, vec![]);
-
-        polygons.push(raw_polygon);
+        polygons.push(Polygon::new(line_string, vec![]));
     }
-
-    let polygon = geo::unary_union(&polygons);
 
     if polygons.is_empty() {
         Err(ProjectionError::NoPolygons)
     } else {
+        let polygon = geo::unary_union(&polygons);
         Ok(polygon)
     }
 }

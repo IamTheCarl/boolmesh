@@ -49,6 +49,51 @@ where
     T: BoolReal,
     P: IntoIterator<Item = &'s Polygon<T>>,
 {
+    // let n = Vector3::new(T::zero(), T::zero(), T::one());
+    // let proj = crate::common::get_aa_proj_matrix(&n);
+
+    // let pts: Vec<_> = polygon_iter_builder()
+    //     .into_iter()
+    //     .flat_map(|polygon| polygon.coords())
+    //     .map(|p| Vector3::new(p.x, p.y, T::zero()))
+    //     .collect();
+    // let poly = pts
+    //     .iter()
+    //     .enumerate()
+    //     .map(|(i, p)| Pt {
+    //         pos: crate::common::compute_aa_proj(&proj, p),
+    //         idx: i,
+    //     })
+    //     .collect::<Vec<_>>();
+    // let idcs = EarClip::new(&[poly], T::K_PRECISION).triangulate();
+
+    // let mut oft_ps = vec![];
+    // let mut oft_ts = vec![];
+    // let n = pts.len();
+    // for p in pts.iter() {
+    //     oft_ps.push(*p);
+    // }
+    // let transform = transform(T::one());
+    // for p in pts.iter() {
+    //     oft_ps.push(
+    //         transform
+    //             .transform_point(&nalgebra::OPoint { coords: *p })
+    //             .coords,
+    //     );
+    // }
+    // for i in idcs.iter() {
+    //     oft_ts.push(Vector3::new(i.z, i.y, i.x));
+    // }
+    // for i in idcs.iter() {
+    //     oft_ts.push(Vector3::new(i.x + n, i.y + n, i.z + n));
+    // }
+    // for i in 0..n {
+    //     let j = (i + 1) % n;
+    //     oft_ts.push(Vector3::new(i, j, i + n));
+    //     oft_ts.push(Vector3::new(i + n, j, j + n));
+    // }
+    // Manifold::new_impl(oft_ps, oft_ts, None, None)
+
     fn points<T: BoolReal>(polygon: &Polygon<T>) -> impl Iterator<Item = Vector3<T>> {
         polygon
             .coords()
