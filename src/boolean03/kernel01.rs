@@ -8,7 +8,7 @@
 
 use nalgebra::{Vector2, Vector3, Vector4};
 
-use crate::common::{BoolReal, Half};
+use crate::common::{BoolReal, HalfEdge};
 
 pub fn interpolate<T: BoolReal>(pl: Vector3<T>, pr: Vector3<T>, x: T) -> Vector2<T> {
     let dx_l = x - pl.x;
@@ -88,7 +88,7 @@ pub fn shadows01<T: BoolReal>(
     q1: usize,
     ps_p: &[Vector3<T>],
     ps_q: &[Vector3<T>],
-    hs_q: &[Half],
+    hs_q: &[HalfEdge],
     ns: &[Vector3<T>],
     expand: T,
     reverse: bool,

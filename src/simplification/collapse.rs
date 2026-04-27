@@ -7,11 +7,11 @@ use super::{
     collapse_triangle, form_loops, head_of, hids_of, next_of, pair_of, remove_if_folded,
     update_vid_around_star,
 };
-use crate::{common::BoolReal, is_ccw_3d, Half, Tref};
+use crate::{common::BoolReal, is_ccw_3d, HalfEdge, Tref};
 
 // Check around a halfedges from the same tail vertex.
 // If they consist of only two tris, then their edge is collapsable.
-fn record_if_collinear(hs: &[Half], rs: &[Tref], hid: usize, nv: usize) -> bool {
+fn record_if_collinear(hs: &[HalfEdge], rs: &[Tref], hid: usize, nv: usize) -> bool {
     let h = &hs[hid];
     if h.pair().is_none() || (h.tail < nv) {
         return false;
@@ -40,7 +40,7 @@ fn record_if_collinear(hs: &[Half], rs: &[Tref], hid: usize, nv: usize) -> bool 
 }
 
 fn record_if_short<T: BoolReal>(
-    hs: &[Half],
+    hs: &[HalfEdge],
     ps: &[Vector3<T>],
     hid: usize,
     nv: usize,
@@ -54,7 +54,7 @@ fn record_if_short<T: BoolReal>(
 }
 
 pub fn collapse_edge<T: BoolReal>(
-    hs: &mut [Half],
+    hs: &mut [HalfEdge],
     ps: &mut Vec<Vector3<T>>,
     ns: &mut [Vector3<T>],
     rs: &mut [Tref],
@@ -151,7 +151,7 @@ pub fn collapse_edge<T: BoolReal>(
 }
 
 pub fn collapse_collinear_edges<T: BoolReal>(
-    hs: &mut [Half],
+    hs: &mut [HalfEdge],
     ps: &mut Vec<Vector3<T>>,
     ns: &mut [Vector3<T>],
     rs: &mut [Tref],
@@ -175,7 +175,7 @@ pub fn collapse_collinear_edges<T: BoolReal>(
 }
 
 pub fn collapse_short_edges<T: BoolReal>(
-    hs: &mut [Half],
+    hs: &mut [HalfEdge],
     ps: &mut Vec<Vector3<T>>,
     ns: &mut [Vector3<T>],
     rs: &mut [Tref],

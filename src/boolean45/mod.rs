@@ -8,7 +8,7 @@ use crate::boolean03::Boolean03;
 use crate::bounds::BBox;
 use crate::common::BoolReal;
 use crate::OpType;
-use crate::{face_of, Half, Manifold, Tref};
+use crate::{face_of, HalfEdge, Manifold, Tref};
 use std::mem;
 
 fn duplicate_verts<T: BoolReal>(
@@ -146,7 +146,7 @@ fn add_new_edge_verts<T: BoolReal>(
     p1q2: &[[usize; 2]],
     i12: &[i32],
     v12_r: &[i32],
-    hs_p: &[Half],
+    hs_p: &[HalfEdge],
     pt_old: &mut FxHashMap<usize, Vec<EdgePt<T>>>,
     pt_new: &mut FxHashMap<(usize, usize), Vec<EdgePt<T>>>,
     fwd: bool,
@@ -206,7 +206,7 @@ fn add_new_edge_verts<T: BoolReal>(
 // Creating a partial halfedges from a list of positions.
 // It's very confusing, but it's not aiming to pair twins (pair is -1).
 // It's more likely to say pairing sta-end vertex and make a halfedge
-fn pair_up<T: BoolReal>(pts: &mut [EdgePt<T>]) -> Vec<Half> {
+fn pair_up<T: BoolReal>(pts: &mut [EdgePt<T>]) -> Vec<HalfEdge> {
     assert_eq!(pts.len() % 2, 0);
     let nh = pts.len() / 2;
     let mid_idx = {
@@ -235,20 +235,20 @@ fn pair_up<T: BoolReal>(pts: &mut [EdgePt<T>]) -> Vec<Half> {
 
     let mut edges = Vec::with_capacity(nh);
     for i in 0..nh {
-        edges.push(Half::new_without_pair(pts[i].vid, pts[i + nh].vid));
+        edges.push(HalfEdge::new_without_pair(pts[i].vid, pts[i + nh].vid));
     }
     edges
 }
 
 fn append_partial_edges<T: BoolReal>(
     i03: &[i32],                                 //
-    hs_p: &[Half],                               // halfedges in mfd_p
+    hs_p: &[HalfEdge],                           // halfedges in mfd_p
     ps_p: &[Vector3<T>],                         //
     ps_r: &[Vector3<T>],                         // the vert pos of mfd_r, already fulfilled so far
     vid_p2r: &[i32],                             // map from vid in mfd_p to vid in mfd_r
     fid_p2r: &[i32],                             // map from fid in mfd_p to fid in mfd_r
     fwd: bool,                                   //
-    hs_r: &mut [Half],                           // halfedge data of mfd_r, empty yet
+    hs_r: &mut [HalfEdge],                       // halfedge data of mfd_r, empty yet
     rs_r: &mut [Tref],                           // map from halfedge in mfd_r to triangle info
     pt_p: &mut FxHashMap<usize, Vec<EdgePt<T>>>, //
     face_ptr_r: &mut [i32],                      //
@@ -315,8 +315,8 @@ fn append_partial_edges<T: BoolReal>(
             let bk_edge = face_ptr_r[fid_r] as usize;
             face_ptr_r[fid_l] += 1;
             face_ptr_r[fid_r] += 1;
-            hs_r[fw_edge] = Half::new(h.tail, h.head, bk_edge);
-            hs_r[bk_edge] = Half::new(h.head, h.tail, fw_edge);
+            hs_r[fw_edge] = HalfEdge::new(h.tail, h.head, bk_edge);
+            hs_r[bk_edge] = HalfEdge::new(h.head, h.tail, fw_edge);
             rs_r[fw_edge] = fw_tri;
             rs_r[bk_edge] = bk_tri;
         }
@@ -329,7 +329,7 @@ fn append_new_edges<T: BoolReal>(
     nf_p: usize,            // num of faces in mfd_p
     face_ptr_r: &mut [i32], //
     pt_new: &mut FxHashMap<(usize, usize), Vec<EdgePt<T>>>, //
-    hs_r: &mut [Half],      // the halfedge data of mfd_r, empty yet
+    hs_r: &mut [HalfEdge],  // the halfedge data of mfd_r, empty yet
     rs_r: &mut [Tref],      //
 ) {
     for ((fid_p, fid_q), pt_init) in pt_new.iter_mut() {
@@ -363,8 +363,8 @@ fn append_new_edges<T: BoolReal>(
             let bk_edge = face_ptr_r[fid_r] as usize;
             face_ptr_r[fid_l] += 1;
             face_ptr_r[fid_r] += 1;
-            hs_r[fw_edge] = Half::new(h.tail, h.head, bk_edge);
-            hs_r[bk_edge] = Half::new(h.head, h.tail, fw_edge);
+            hs_r[fw_edge] = HalfEdge::new(h.tail, h.head, bk_edge);
+            hs_r[bk_edge] = HalfEdge::new(h.head, h.tail, fw_edge);
             rs_r[fw_edge] = fw_ref;
             rs_r[bk_edge] = bk_ref;
         }
@@ -373,13 +373,13 @@ fn append_new_edges<T: BoolReal>(
 
 fn append_whole_edges(
     i03: &[i32],
-    half_p: &[Half],
+    half_p: &[HalfEdge],
     fid_p2r: &[i32],
     vid_p2r: &[i32],
     whole_flag: &[bool],
     fwd: bool,
     face_ptr_r: &mut [i32],
-    hs_r: &mut [Half],
+    hs_r: &mut [HalfEdge],
     rs_r: &mut [Tref],
 ) {
     for (i, hp) in half_p.iter().enumerate() {
@@ -419,8 +419,8 @@ fn append_whole_edges(
             let bk_edge = face_ptr_r[fid_r] as usize;
             face_ptr_r[fid_l] += 1;
             face_ptr_r[fid_r] += 1;
-            hs_r[fw_edge] = Half::new(h.tail, h.head, bk_edge);
-            hs_r[bk_edge] = Half::new(h.head, h.tail, fw_edge);
+            hs_r[fw_edge] = HalfEdge::new(h.tail, h.head, bk_edge);
+            hs_r[bk_edge] = HalfEdge::new(h.head, h.tail, fw_edge);
             rs_r[fw_edge] = fw_ref;
             rs_r[bk_edge] = bk_ref;
             h.tail += 1;
@@ -432,7 +432,7 @@ fn append_whole_edges(
 pub struct Boolean45<T> {
     pub ps: Vec<Vector3<T>>,
     pub ns: Vec<Vector3<T>>,
-    pub hs: Vec<Half>,
+    pub hs: Vec<HalfEdge>,
     pub rs: Vec<Tref>,
     pub hid_per_f: Vec<i32>,
     pub nv_from_p: usize,
@@ -544,7 +544,7 @@ pub fn boolean45<T: BoolReal>(
     let mut whole_flag_p = vec![true; mp.nh];
     let mut whole_flag_q = vec![true; mq.nh];
     let mut rs_r = vec![Tref::default(); nh];
-    let mut hs_r = vec![Half::default(); nh];
+    let mut hs_r = vec![HalfEdge::default(); nh];
     let fid_p2r = &fid_pq2r[0..mp.nf];
     let fid_q2r = &fid_pq2r[mp.nf..];
 

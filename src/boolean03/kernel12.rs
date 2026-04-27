@@ -6,14 +6,14 @@ use super::kernel02::Kernel02;
 use super::kernel11::Kernel11;
 use crate::bounds::{BBox, Query};
 use crate::common::BoolReal;
-use crate::{Half, Manifold};
+use crate::{HalfEdge, Manifold};
 use nalgebra::Vector3;
 #[cfg(feature = "rayon")]
 use rayon::prelude::*;
 
 pub struct Kernel12<'a, T> {
-    pub hs_p: &'a [Half],
-    pub hs_q: &'a [Half],
+    pub hs_p: &'a [HalfEdge],
+    pub hs_q: &'a [HalfEdge],
     pub ps_p: &'a [Vector3<T>],
     pub k02: Kernel02<'a, T>,
     pub k11: Kernel11<'a, T>,

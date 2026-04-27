@@ -5,13 +5,13 @@
 use nalgebra::{Vector3, Vector4};
 
 use super::kernel01::{intersect, shadows, shadows01};
-use crate::{common::BoolReal, Half};
+use crate::{common::BoolReal, HalfEdge};
 
 pub struct Kernel11<'a, T> {
     pub ps_p: &'a [Vector3<T>],
     pub ps_q: &'a [Vector3<T>],
-    pub hs_p: &'a [Half],
-    pub hs_q: &'a [Half],
+    pub hs_p: &'a [HalfEdge],
+    pub hs_q: &'a [HalfEdge],
     pub ns: &'a [Vector3<T>],
     pub expand: T,
 }

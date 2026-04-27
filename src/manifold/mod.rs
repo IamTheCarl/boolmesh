@@ -9,7 +9,7 @@ use super::hmesh::Hmesh;
 use crate::collider::{morton_code, MortonCollider, K_NO_CODE};
 use crate::common::BoolReal;
 use crate::manifold::hmesh::HmeshError;
-use crate::{next_of, Half};
+use crate::{next_of, HalfEdge};
 use bounds::BBox;
 use fxhash::FxBuildHasher;
 use nalgebra::{Matrix4, Point3, Rotation3, Vector3};
@@ -23,7 +23,7 @@ use thiserror::Error;
 #[derive(Clone, Debug)]
 pub struct Manifold<T: BoolReal = f64> {
     pub ps: Vec<Vector3<T>>,           // positions
-    pub hs: Vec<Half>,                 // halfedges
+    pub hs: Vec<HalfEdge>,             // halfedges
     pub nv: usize,                     // number of vertices
     pub nf: usize,                     // number of faces
     pub nh: usize,                     // number of halfedges
@@ -86,7 +86,7 @@ impl<T: BoolReal> Manifold<T> {
         let hs = hm
             .half
             .iter()
-            .map(|&i| Half::new(hm.tail[i], hm.head[i], hm.twin[i]))
+            .map(|&i| HalfEdge::new(hm.tail[i], hm.head[i], hm.twin[i]))
             .collect::<Vec<_>>();
 
         let mut e = T::K_PRECISION * bb.scale();
@@ -269,7 +269,7 @@ fn sort_faces<T: BoolReal>(
 fn compute_coplanar_idx<T: BoolReal>(
     ps: &[Vector3<T>],
     ns: &[Vector3<T>],
-    hs: &[Half],
+    hs: &[HalfEdge],
     tol: T,
 ) -> Vec<i32> {
     let nt = hs.len() / 3;
@@ -327,7 +327,7 @@ fn compute_coplanar_idx<T: BoolReal>(
     res
 }
 
-pub fn cleanup_unused_verts<T: BoolReal>(ps: &mut Vec<Vector3<T>>, hs: &mut Vec<Half>) {
+pub fn cleanup_unused_verts<T: BoolReal>(ps: &mut Vec<Vector3<T>>, hs: &mut Vec<HalfEdge>) {
     let bb = BBox::new(None, ps);
     let mt = ps.iter().map(|p| morton_code(p, &bb)).collect::<Vec<_>>();
 

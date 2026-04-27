@@ -5,11 +5,11 @@ use fxhash::FxHashMap;
 use nalgebra::Vector3;
 
 use super::{pair_up, tail_of, update_vid_around_star};
-use crate::{common::BoolReal, next_of, Half, Tref};
+use crate::{common::BoolReal, next_of, HalfEdge, Tref};
 
 fn dedupe_edge<T: BoolReal>(
     ps: &mut Vec<Vector3<T>>,
-    hs: &mut Vec<Half>,
+    hs: &mut Vec<HalfEdge>,
     ns: &mut Vec<Vector3<T>>,
     rs: &mut Vec<Tref>,
     hid: usize,
@@ -32,17 +32,17 @@ fn dedupe_edge<T: BoolReal>(
 
             let nh = hs.len();
             let pair = hs[cur].pair;
-            hs.push(Half::new_without_pair(head, copy));
-            hs.push(Half::new_without_pair(copy, tail_of(hs, cur)));
-            hs.push(Half::new_without_pair(tail_of(hs, cur), head));
+            hs.push(HalfEdge::new_without_pair(head, copy));
+            hs.push(HalfEdge::new_without_pair(copy, tail_of(hs, cur)));
+            hs.push(HalfEdge::new_without_pair(tail_of(hs, cur), head));
             pair_up(hs, nh + 2, pair);
             pair_up(hs, nh + 1, cur);
 
             let nh = hs.len();
             let pair = hs[opp].pair;
-            hs.push(Half::new_without_pair(copy, head));
-            hs.push(Half::new_without_pair(head, tail_of(hs, opp)));
-            hs.push(Half::new_without_pair(tail_of(hs, opp), copy));
+            hs.push(HalfEdge::new_without_pair(copy, head));
+            hs.push(HalfEdge::new_without_pair(head, tail_of(hs, opp)));
+            hs.push(HalfEdge::new_without_pair(tail_of(hs, opp), copy));
             pair_up(hs, nh + 2, pair);
             pair_up(hs, nh + 1, opp);
 
@@ -112,7 +112,7 @@ fn dedupe_edge<T: BoolReal>(
 
 pub fn dedupe_edges<T: BoolReal>(
     ps: &mut Vec<Vector3<T>>,
-    hs: &mut Vec<Half>,
+    hs: &mut Vec<HalfEdge>,
     ns: &mut Vec<Vector3<T>>,
     rs: &mut Vec<Tref>,
 ) {

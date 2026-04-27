@@ -142,13 +142,13 @@ pub enum OpType {
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct Half {
+pub struct HalfEdge {
     pub tail: usize,
     pub head: usize,
     pub pair: usize,
 }
 
-impl Default for Half {
+impl Default for HalfEdge {
     fn default() -> Self {
         Self {
             tail: usize::MAX,
@@ -158,7 +158,7 @@ impl Default for Half {
     }
 }
 
-impl Half {
+impl HalfEdge {
     pub fn new(tail: usize, head: usize, pair: usize) -> Self {
         Self { tail, head, pair }
     }

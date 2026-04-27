@@ -12,7 +12,7 @@ use crate::triangulation::ear_clip::EarClip;
 use crate::triangulation::tri_halfs::tri_halfs_multi;
 #[cfg(not(feature = "rayon"))]
 use crate::triangulation::tri_halfs::tri_halfs_single;
-use crate::{compute_aa_proj, get_aa_proj_matrix, is_ccw_3d, Half, Manifold, Tref};
+use crate::{compute_aa_proj, get_aa_proj_matrix, is_ccw_3d, HalfEdge, Manifold, Tref};
 use nalgebra::{Vector2, Vector3};
 #[cfg(feature = "rayon")]
 use rayon::prelude::*;
@@ -20,7 +20,7 @@ use std::collections::{BTreeMap, VecDeque};
 use thiserror::Error;
 
 pub struct Triangulation<T> {
-    pub hs: Vec<Half>,
+    pub hs: Vec<HalfEdge>,
     pub rs: Vec<Tref>,
     pub ns: Vec<Vector3<T>>,
 }
@@ -93,7 +93,7 @@ fn process_face<T: BoolReal>(b45: &Boolean45<T>, fid: usize, eps: T) -> Vec<Vect
     }
 }
 
-pub fn assemble_halfs(hs: &[Half], hid_f: &[i32], fid: usize) -> Vec<Vec<usize>> {
+pub fn assemble_halfs(hs: &[HalfEdge], hid_f: &[i32], fid: usize) -> Vec<Vec<usize>> {
     let bgn = hid_f[fid] as usize;
     let end = hid_f[fid + 1] as usize;
     let num = end - bgn;

@@ -4,14 +4,14 @@
 pub mod collapse;
 pub mod dedup;
 pub mod re_swap;
-use crate::{common::BoolReal, next_of, Half, Tref};
+use crate::{common::BoolReal, next_of, HalfEdge, Tref};
 use collapse::{collapse_collinear_edges, collapse_edge, collapse_short_edges};
 use dedup::dedupe_edges;
 use nalgebra::{Vector2, Vector3};
 use re_swap::swap_degenerates;
 
 pub fn simplify_topology<T: BoolReal>(
-    hs: &mut Vec<Half>,
+    hs: &mut Vec<HalfEdge>,
     ps: &mut Vec<Vector3<T>>,
     ns: &mut Vec<Vector3<T>>,
     rs: &mut Vec<Tref>,
@@ -27,16 +27,16 @@ pub fn simplify_topology<T: BoolReal>(
     swap_degenerates(hs, ps, ns, rs, nv, eps);
 }
 
-fn head_of(hs: &[Half], i: usize) -> usize {
+fn head_of(hs: &[HalfEdge], i: usize) -> usize {
     hs[i].head
 }
-fn tail_of(hs: &[Half], i: usize) -> usize {
+fn tail_of(hs: &[HalfEdge], i: usize) -> usize {
     hs[i].tail
 }
-fn pair_of(hs: &[Half], i: usize) -> usize {
+fn pair_of(hs: &[HalfEdge], i: usize) -> usize {
     hs[i].pair
 }
-fn pair_up(hs: &mut [Half], i: usize, j: usize) {
+fn pair_up(hs: &mut [HalfEdge], i: usize, j: usize) {
     hs[i].pair = j;
     hs[j].pair = i;
 }
@@ -50,7 +50,7 @@ fn hids_of(i: usize) -> (usize, usize, usize) {
 // and if collapsing the tail vertex as well, this function creates two loops.
 // Beware the needless loop is not necessarily eliminated from the mesh because
 // halfedges of the tail side might be connected to other triangles (would be folded though).
-fn form_loops<T: BoolReal>(hs: &mut [Half], ps: &mut Vec<Vector3<T>>, bgn: usize, end: usize) {
+fn form_loops<T: BoolReal>(hs: &mut [HalfEdge], ps: &mut Vec<Vector3<T>>, bgn: usize, end: usize) {
     ps.push(ps[tail_of(hs, bgn)]);
     ps.push(ps[head_of(hs, bgn)]);
     let bgn_vid = ps.len() - 2;
@@ -76,7 +76,7 @@ fn form_loops<T: BoolReal>(hs: &mut [Half], ps: &mut Vec<Vector3<T>>, bgn: usize
 // 3. Topologically valid, but just two vertex positions are the same
 // Beware the case that triangles only connected at a vertex but not by halfedge
 // are eliminated by split_pinched_vert and dedupe_edges functions.
-fn remove_if_folded<T: BoolReal>(hs: &mut [Half], ps: &mut [Vector3<T>], hid: usize) {
+fn remove_if_folded<T: BoolReal>(hs: &mut [HalfEdge], ps: &mut [Vector3<T>], hid: usize) {
     let (i0, i1, i2) = hids_of(hid);
     let (j0, j1, j2) = hids_of(pair_of(hs, hid));
 
@@ -101,14 +101,14 @@ fn remove_if_folded<T: BoolReal>(hs: &mut [Half], ps: &mut [Vector3<T>], hid: us
     pair_up(hs, hs[i1].pair, hs[j2].pair);
     pair_up(hs, hs[i2].pair, hs[j1].pair);
     for i in [i0, i1, i2] {
-        hs[i] = Half::default();
+        hs[i] = HalfEdge::default();
     }
     for j in [j0, j1, j2] {
-        hs[j] = Half::default();
+        hs[j] = HalfEdge::default();
     }
 }
 
-fn split_pinched_vert<T: BoolReal>(hs: &mut [Half], ps: &mut Vec<Vector3<T>>) {
+fn split_pinched_vert<T: BoolReal>(hs: &mut [HalfEdge], ps: &mut Vec<Vector3<T>>) {
     let mut v_processed = vec![false; ps.len()];
     let mut h_processed = vec![false; hs.len()];
 
@@ -142,7 +142,7 @@ fn split_pinched_vert<T: BoolReal>(hs: &mut [Half], ps: &mut Vec<Vector3<T>>) {
 }
 
 fn update_vid_around_star(
-    hs: &mut [Half],
+    hs: &mut [HalfEdge],
     bgn: usize, // incoming bgn halfedge id (inclusive)
     end: usize, // incoming end halfedge id (exclusive)
     vid: usize, // alternative vid
@@ -157,7 +157,7 @@ fn update_vid_around_star(
     }
 }
 
-fn collapse_triangle(hs: &mut [Half], hids: &(usize, usize, usize)) {
+fn collapse_triangle(hs: &mut [HalfEdge], hids: &(usize, usize, usize)) {
     if hs[hids.1].pair().is_none() {
         return;
     }
@@ -166,7 +166,7 @@ fn collapse_triangle(hs: &mut [Half], hids: &(usize, usize, usize)) {
     hs[pair1].pair = pair2;
     hs[pair2].pair = pair1;
     for i in [hids.0, hids.1, hids.2] {
-        hs[i] = Half::default();
+        hs[i] = HalfEdge::default();
     }
 }
 

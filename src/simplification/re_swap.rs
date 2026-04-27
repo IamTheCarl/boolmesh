@@ -7,10 +7,10 @@ use super::{
     collapse_edge, form_loops, head_of, hids_of, is01_longest_2d, next_of, pair_of, pair_up,
     remove_if_folded, tail_of,
 };
-use crate::{common::BoolReal, compute_aa_proj, get_aa_proj_matrix, is_ccw_2d, Half, Tref};
+use crate::{common::BoolReal, compute_aa_proj, get_aa_proj_matrix, is_ccw_2d, HalfEdge, Tref};
 
 fn record<T: BoolReal>(
-    hs: &[Half],
+    hs: &[HalfEdge],
     ps: &[Vector3<T>],
     ns: &[Vector3<T>],
     hid: usize,
@@ -48,7 +48,7 @@ fn record<T: BoolReal>(
 }
 
 fn recursive_edge_swap<T: BoolReal>(
-    hs: &mut [Half],
+    hs: &mut [HalfEdge],
     ps: &mut Vec<Vector3<T>>,
     ns: &mut [Vector3<T>],
     ts: &mut [Tref],
@@ -154,7 +154,7 @@ fn recursive_edge_swap<T: BoolReal>(
 }
 
 pub fn swap_degenerates<T: BoolReal>(
-    hs: &mut [Half],
+    hs: &mut [HalfEdge],
     ps: &mut Vec<Vector3<T>>,
     ns: &mut [Vector3<T>],
     ts: &mut [Tref],

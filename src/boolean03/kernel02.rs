@@ -4,12 +4,12 @@
 use nalgebra::Vector3;
 
 use super::kernel01::{interpolate, shadows, shadows01};
-use crate::{common::BoolReal, Half};
+use crate::{common::BoolReal, HalfEdge};
 
 pub struct Kernel02<'a, T> {
     pub ps_p: &'a [Vector3<T>],
     pub ps_q: &'a [Vector3<T>],
-    pub hs_q: &'a [Half],
+    pub hs_q: &'a [HalfEdge],
     pub ns: &'a [Vector3<T>],
     pub expand: T,
     pub fwd: bool,

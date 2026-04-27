@@ -1,18 +1,18 @@
 //--- Copyright (C) 2025 Saki Komikado <komietty@gmail.com>,
 //--- This Source Code Form is subject to the terms of the Mozilla Public License v.2.0.
 
-use crate::{next_of, Half};
+use crate::{next_of, HalfEdge};
 use nalgebra::Vector3;
 #[cfg(feature = "rayon")]
 use rayon::prelude::*;
 
 const REMOVE_FLAG: usize = usize::MAX - 1;
 
-pub fn tri_halfs_single(ts: &[Vector3<usize>]) -> Vec<Half> {
+pub fn tri_halfs_single(ts: &[Vector3<usize>]) -> Vec<HalfEdge> {
     let nh = ts.len() * 3;
     let ne = nh / 2;
     let nt = nh / 3;
-    let mut hs = vec![Half::default(); nh];
+    let mut hs = vec![HalfEdge::default(); nh];
     let mut is = (0..nh).collect::<Vec<_>>();
     let mut ky = vec![0u64; nh];
 
@@ -45,8 +45,8 @@ pub fn tri_halfs_single(ts: &[Vector3<usize>]) -> Vec<Half> {
             hs[i0].pair = i1;
             hs[i1].pair = i0;
         } else {
-            hs[i0] = Half::default();
-            hs[i1] = Half::default();
+            hs[i0] = HalfEdge::default();
+            hs[i1] = HalfEdge::default();
         }
     }
 
@@ -85,11 +85,11 @@ pub fn tri_halfs_single(ts: &[Vector3<usize>]) -> Vec<Half> {
 }
 
 #[cfg(feature = "rayon")]
-pub fn tri_halfs_multi(ts: &[Vector3<usize>]) -> Vec<Half> {
+pub fn tri_halfs_multi(ts: &[Vector3<usize>]) -> Vec<HalfEdge> {
     let nh = ts.len() * 3;
     let ne = nh / 2;
     let nt = nh / 3;
-    let mut hs = vec![Half::default(); nh];
+    let mut hs = vec![HalfEdge::default(); nh];
     let mut is = (0..nh).collect::<Vec<_>>();
     let mut ky = vec![0u64; nh];
 
@@ -124,8 +124,8 @@ pub fn tri_halfs_multi(ts: &[Vector3<usize>]) -> Vec<Half> {
             hs[i0].pair = i1;
             hs[i1].pair = i0;
         } else {
-            hs[i0] = Half::default();
-            hs[i1] = Half::default();
+            hs[i0] = HalfEdge::default();
+            hs[i1] = HalfEdge::default();
         }
     }
 
@@ -165,7 +165,7 @@ pub fn tri_halfs_multi(ts: &[Vector3<usize>]) -> Vec<Half> {
 // By sorting forward and backward halfedges by key,
 // now halfedges of the same mini ids are sorted in a sequence.
 // It treats the triangle overlap case here, also considers 4-manifold case.
-fn step(is: &mut [usize], hs: &mut [Half], i: usize, consecutive_ini: usize) -> usize {
+fn step(is: &mut [usize], hs: &mut [HalfEdge], i: usize, consecutive_ini: usize) -> usize {
     let nh = hs.len();
     let ne = nh / 2;
     let i0 = is[i];
