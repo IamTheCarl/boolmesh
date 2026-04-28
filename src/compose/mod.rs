@@ -25,7 +25,7 @@ pub fn compose<T: BoolReal>(ms: &Vec<Manifold<T>>) -> Result<Manifold<T>, Manifo
     let mut offset = 0;
     for m in ms {
         for h in m.hs.iter() {
-            ts.push(h.tail + offset);
+            ts.push(h.tail.0 + offset);
         }
         for p in m.ps.iter() {
             ps.push(p.x);

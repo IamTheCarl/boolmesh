@@ -543,17 +543,17 @@ mod test_simplification {
             if h.tail().is_none() {
                 assert_eq!(d, -1);
             } else {
-                assert_eq!(a as i32, d);
+                assert_eq!(a.0 as i32, d);
             }
             if h.head().is_none() {
                 assert_eq!(e, -1);
             } else {
-                assert_eq!(b as i32, e);
+                assert_eq!(b.0 as i32, e);
             }
             if h.pair().is_none() {
                 assert_eq!(f, -1);
             } else {
-                assert_eq!(c as i32, f);
+                assert_eq!(c.0 as i32, f);
             }
         }
 

@@ -13,11 +13,11 @@ use crate::{common::BoolReal, is_ccw_3d, HalfEdge, Tref};
 // If they consist of only two tris, then their edge is collapsable.
 fn record_if_collinear(hs: &[HalfEdge], rs: &[Tref], hid: usize, nv: usize) -> bool {
     let h = &hs[hid];
-    if h.pair().is_none() || (h.tail < nv) {
+    if h.pair().is_none() || (h.tail.0 < nv) {
         return false;
     }
 
-    let cw_next = |i: usize| next_of(hs[i].pair);
+    let cw_next = |i: usize| next_of(hs[i].pair.0);
 
     let bgn = hid;
     let mut cur = cw_next(bgn);
@@ -47,10 +47,10 @@ fn record_if_short<T: BoolReal>(
     ep: T,
 ) -> bool {
     let h = &hs[hid];
-    if h.pair().is_none() || (h.tail < nv && h.head < nv) {
+    if h.pair().is_none() || (h.tail.0 < nv && h.head.0 < nv) {
         return false;
     }
-    (ps[hs[hid].head] - ps[hs[hid].tail]).norm_squared() < ep.powi(2)
+    (ps[hs[hid].head.0] - ps[hs[hid].tail.0]).norm_squared() < ep.powi(2)
 }
 
 pub fn collapse_edge<T: BoolReal>(
@@ -67,13 +67,13 @@ pub fn collapse_edge<T: BoolReal>(
         return false;
     }
 
-    let vid_keep = to_rmv.head;
-    let vid_delt = to_rmv.tail;
+    let vid_keep = to_rmv.head.0;
+    let vid_delt = to_rmv.tail.0;
     let pos_keep = ps[vid_keep];
     let pos_delt = ps[vid_delt];
 
     let t0 = hids_of(hid);
-    let t1 = hids_of(to_rmv.pair);
+    let t1 = hids_of(to_rmv.pair.0);
 
     let mut bgn = pair_of(hs, t1.1); // the bgn half heading delt vert
     let end = t0.2; // the end half heading delt vert
@@ -81,14 +81,14 @@ pub fn collapse_edge<T: BoolReal>(
     // check validity by orbiting start vert ccw order
     if (pos_keep - pos_delt).norm_squared() >= eps.powi(2) {
         let mut cur = bgn;
-        let mut tr0 = &rs[to_rmv.pair / 3];
+        let mut tr0 = &rs[to_rmv.pair.0 / 3];
         let mut p_prev = ps[head_of(hs, t1.1)];
-        while cur != to_rmv.pair {
+        while cur != to_rmv.pair.0 {
             cur = next_of(cur); // incoming half around delt vert
             let p_next = ps[head_of(hs, cur)];
             let r_curr = &rs[cur / 3];
             let n_curr = &ns[cur / 3];
-            let n_pair = &ns[to_rmv.pair / 3];
+            let n_pair = &ns[to_rmv.pair.0 / 3];
             let ccw = |p0, p1, p2| is_ccw_3d(p0, p1, p2, n_curr, eps);
             if !is_coplanar(r_curr, tr0) {
                 let tr2 = tr0;
@@ -123,7 +123,7 @@ pub fn collapse_edge<T: BoolReal>(
         cur = pair_of(hs, cur);
     }
 
-    ps[to_rmv.tail] = Vector3::from_element(T::NAN);
+    ps[to_rmv.tail.0] = Vector3::from_element(T::NAN);
     collapse_triangle(hs, &t1);
 
     let mut cur = bgn;

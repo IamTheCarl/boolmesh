@@ -9,7 +9,7 @@ use super::hmesh::Hmesh;
 use crate::collider::{morton_code, MortonCollider, K_NO_CODE};
 use crate::common::BoolReal;
 use crate::manifold::hmesh::HmeshError;
-use crate::{next_of, HalfEdge};
+use crate::{next_of, EdgeId, HalfEdge};
 use bounds::BBox;
 use fxhash::FxBuildHasher;
 use nalgebra::{Matrix4, Point3, Rotation3, Vector3};
@@ -121,7 +121,7 @@ impl<T: BoolReal> Manifold<T> {
     pub fn get_indices(&self) -> Vec<Vector3<usize>> {
         self.hs
             .chunks(3)
-            .map(|cs| Vector3::new(cs[0].tail, cs[1].tail, cs[2].tail))
+            .map(|cs| Vector3::new(cs[0].tail.0, cs[1].tail.0, cs[2].tail.0))
             .collect()
     }
 
@@ -148,9 +148,9 @@ impl<T: BoolReal> Manifold<T> {
                 Some(pair) => {
                     let mut good = true;
                     good &= self.hs[pair].pair() == Some(i);
-                    good &= h.tail != h.head;
-                    good &= h.tail == self.hs[pair].head;
-                    good &= h.head == self.hs[pair].tail;
+                    good &= h.tail.0 != h.head.0;
+                    good &= h.tail.0 == self.hs[pair].head.0;
+                    good &= h.head.0 == self.hs[pair].tail.0;
                     good
                 }
             }
@@ -281,9 +281,9 @@ fn compute_coplanar_idx<T: BoolReal>(
         let area = if hs[i].tail().is_none() {
             T::zero()
         } else {
-            let p0 = ps[hs[i].tail];
-            let p1 = ps[hs[i].head];
-            let p2 = ps[hs[i + 1].head];
+            let p0 = ps[hs[i].tail.0];
+            let p1 = ps[hs[i].head.0];
+            let p2 = ps[hs[i + 1].head.0];
             (p1 - p0).cross(&(p2 - p0)).norm_squared()
         };
         priority.push((area, t));
@@ -299,23 +299,23 @@ fn compute_coplanar_idx<T: BoolReal>(
         res[*t] = *t as i32;
 
         let i = t * 3;
-        let p = ps[hs[i].tail];
+        let p = ps[hs[i].tail.0];
         let n = ns[*t];
 
         interior.clear();
         interior.extend_from_slice(&[i, i + 1, i + 2]);
 
         while let Some(hi) = interior.pop() {
-            let h1 = next_of(hs[hi].pair);
+            let h1 = next_of(hs[hi].pair.0);
             let t1 = h1 / 3;
 
             if res[t1] != -1 {
                 continue;
             }
 
-            if (ps[hs[h1].head] - p).dot(&n).abs() < tol {
+            if (ps[hs[h1].head.0] - p).dot(&n).abs() < tol {
                 res[t1] = *t as i32;
-                if interior.last().copied() == Some(hs[h1].pair) {
+                if interior.last().copied() == Some(hs[h1].pair.0) {
                     interior.pop();
                 } else {
                     interior.push(h1);
@@ -343,8 +343,8 @@ pub fn cleanup_unused_verts<T: BoolReal>(ps: &mut Vec<Vector3<T>>, hs: &mut Vec<
         if h.pair().is_none() {
             continue;
         }
-        h.tail = old2new[h.tail];
-        h.head = old2new[h.head];
+        h.tail = EdgeId(old2new[h.tail.0]);
+        h.head = EdgeId(old2new[h.head.0]);
     }
 
     // truncate pos container

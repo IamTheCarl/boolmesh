@@ -5,7 +5,7 @@ use fxhash::FxHashMap;
 use nalgebra::Vector3;
 
 use super::{pair_up, tail_of, update_vid_around_star};
-use crate::{common::BoolReal, next_of, HalfEdge, Tref};
+use crate::{common::BoolReal, next_of, EdgeId, HalfEdge, Tref};
 
 fn dedupe_edge<T: BoolReal>(
     ps: &mut Vec<Vector3<T>>,
@@ -19,19 +19,19 @@ fn dedupe_edge<T: BoolReal>(
     // In that case, split the head vert and create new triangles at first.
     // It is still crossover as a surface, but it's not a 4-manifold anymore.
     // For here we do not care either the tail vert is attached or not (care it in the 3rd step).
-    let tail = hs[hid].tail;
-    let head = hs[hid].head;
-    let opp = hs[next_of(hid)].pair;
-    let mut cur = hs[next_of(hid)].pair;
+    let tail = hs[hid].tail.0;
+    let head = hs[hid].head.0;
+    let opp = hs[next_of(hid)].pair.0;
+    let mut cur = hs[next_of(hid)].pair.0;
     while cur != hid {
         if tail_of(hs, cur) == tail {
             ps.push(ps[head]);
             let copy = ps.len() - 1;
-            cur = hs[next_of(cur)].pair;
+            cur = hs[next_of(cur)].pair.0;
             update_vid_around_star(hs, cur, opp, copy);
 
             let nh = hs.len();
-            let pair = hs[cur].pair;
+            let pair = hs[cur].pair.0;
             hs.push(HalfEdge::new_without_pair(head, copy));
             hs.push(HalfEdge::new_without_pair(copy, tail_of(hs, cur)));
             hs.push(HalfEdge::new_without_pair(tail_of(hs, cur), head));
@@ -39,7 +39,7 @@ fn dedupe_edge<T: BoolReal>(
             pair_up(hs, nh + 1, cur);
 
             let nh = hs.len();
-            let pair = hs[opp].pair;
+            let pair = hs[opp].pair.0;
             hs.push(HalfEdge::new_without_pair(copy, head));
             hs.push(HalfEdge::new_without_pair(head, tail_of(hs, opp)));
             hs.push(HalfEdge::new_without_pair(tail_of(hs, opp), copy));
@@ -56,7 +56,7 @@ fn dedupe_edge<T: BoolReal>(
             ns.push(ns[opp / 3]);
             break;
         }
-        cur = hs[next_of(cur)].pair;
+        cur = hs[next_of(cur)].pair.0;
     }
 
     // 2: Pinch the head vert if 1 does not happen.
@@ -71,9 +71,9 @@ fn dedupe_edge<T: BoolReal>(
         let start = next_of(cur);
         let mut e = start;
         loop {
-            hs[e].tail = new_vert;
-            let p = hs[e].pair;
-            hs[p].head = new_vert;
+            hs[e].tail = EdgeId(new_vert);
+            let p = hs[e].pair.0;
+            hs[p].head = EdgeId(new_vert);
             e = next_of(p);
             if e == start {
                 break;
@@ -81,13 +81,13 @@ fn dedupe_edge<T: BoolReal>(
         }
     }
     // 3: Pinch the tail vert anyway.
-    let pair = hs[hid].pair;
-    let mut curr = hs[next_of(pair)].pair;
+    let pair = hs[hid].pair.0;
+    let mut curr = hs[next_of(pair)].pair.0;
     while curr != pair {
-        if hs[curr].tail == head {
+        if hs[curr].tail.0 == head {
             break;
         }
-        curr = hs[next_of(curr)].pair;
+        curr = hs[next_of(curr)].pair.0;
     }
     if curr == pair {
         // Split the pinched vert the previous split created.
@@ -99,9 +99,9 @@ fn dedupe_edge<T: BoolReal>(
         let bgn = next_of(curr);
         let mut e = bgn;
         loop {
-            hs[e].tail = new_vert;
-            let p = hs[e].pair;
-            hs[p].head = new_vert;
+            hs[e].tail = EdgeId(new_vert);
+            let p = hs[e].pair.0;
+            hs[p].head = EdgeId(new_vert);
             e = next_of(p);
             if e == bgn {
                 break;
@@ -139,7 +139,7 @@ pub fn dedupe_edges<T: BoolReal>(
                 if hs[cur].tail().is_none() || hs[cur].head().is_none() {
                     continue;
                 }
-                let head = hs[cur].head;
+                let head = hs[cur].head.0;
                 if map.is_empty() {
                     if let Some(p) = vec.iter_mut().find(|p| p.0 == head) {
                         p.1 = p.1.min(cur);
@@ -160,7 +160,7 @@ pub fn dedupe_edges<T: BoolReal>(
                         })
                         .or_insert(cur);
                 }
-                cur = next_of(hs[cur].pair);
+                cur = next_of(hs[cur].pair.0);
                 if cur == hid {
                     break;
                 }
@@ -172,7 +172,7 @@ pub fn dedupe_edges<T: BoolReal>(
                 if hs[cur].tail().is_none() || hs[cur].head().is_none() {
                     continue;
                 }
-                let head = hs[cur].head;
+                let head = hs[cur].head.0;
                 let mini = if map.is_empty() {
                     vec.iter().find(|p| p.0 == head).map(|p| p.1)
                 } else {
@@ -181,7 +181,7 @@ pub fn dedupe_edges<T: BoolReal>(
                 if mini.is_some_and(|id| id != cur) {
                     dups.push(cur);
                 }
-                cur = next_of(hs[cur].pair);
+                cur = next_of(hs[cur].pair.0);
                 if cur == hid {
                     break;
                 }

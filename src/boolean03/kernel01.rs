@@ -93,8 +93,8 @@ pub fn shadows01<T: BoolReal>(
     expand: T,
     reverse: bool,
 ) -> Option<(i32, Vector2<T>)> {
-    let q1s = hs_q[q1].tail;
-    let q1e = hs_q[q1].head;
+    let q1s = hs_q[q1].tail.0;
+    let q1e = hs_q[q1].head.0;
     let p0x = ps_p[p0].x;
     let q1sx = ps_q[q1s].x;
     let q1ex = ps_q[q1e].x;

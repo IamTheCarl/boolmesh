@@ -56,9 +56,9 @@ fn setup(
     let mut pos = vec![];
     let mut vns = vec![];
     for (fid, hs) in res.hs.chunks(3).enumerate() {
-        let p0 = res.ps[hs[0].tail];
-        let p1 = res.ps[hs[1].tail];
-        let p2 = res.ps[hs[2].tail];
+        let p0 = res.ps[hs[0].tail.0];
+        let p1 = res.ps[hs[1].tail.0];
+        let p2 = res.ps[hs[2].tail.0];
         let n = res.face_normals[fid];
         pos.push([p0.x as f32, p0.y as f32, p0.z as f32]);
         pos.push([p1.x as f32, p1.y as f32, p1.z as f32]);
@@ -92,7 +92,7 @@ pub fn menger_sponge(n: usize) -> Manifold {
     let holes_z = compose(&holes).unwrap();
 
     let rot = |x: f64, y: f64, z: f64| {
-        let ts = holes_z.hs.iter().map(|h| h.tail).collect::<Vec<_>>();
+        let ts = holes_z.hs.iter().map(|h| h.tail.0).collect::<Vec<_>>();
         let mut ps = holes_z.ps.clone();
         let r = nalgebra::Rotation3::from_euler_angles(x, y, z).into_inner();
         for p in ps.iter_mut() {

@@ -71,7 +71,7 @@ pub fn compute_boolean<T: BoolReal>(mp: &Manifold<T>, mq: &Manifold<T>, op: OpTy
         b45.ps,
         trg.hs
             .chunks(3)
-            .map(|hs| Vector3::new(hs[0].tail, hs[1].tail, hs[2].tail))
+            .map(|hs| Vector3::new(hs[0].tail.0, hs[1].tail.0, hs[2].tail.0))
             .collect(),
         Some(eps),
         Some(tol),
@@ -136,7 +136,7 @@ pub fn compute_projection<T: BoolReal + BoolOpsNum>(manifold: &Manifold<T>) -> R
         }
 
         fn next_edge<T: BoolReal>(&mut self, manifold: &Manifold<T>, current_edge_id: usize) -> Option<usize> {
-            let next_tail = manifold.hs[current_edge_id].head;
+            let next_tail = manifold.hs[current_edge_id].head.0;
             let queue = self.get_mut(&next_tail)?;
             let value = queue.pop_back();
             if queue.is_empty() {
@@ -149,12 +149,12 @@ pub fn compute_projection<T: BoolReal + BoolOpsNum>(manifold: &Manifold<T>) -> R
     for (edge_id, edge) in manifold.hs.iter().enumerate() {
         // Each edge appears twice in the half-edge structure (as a pair),
         // so skip one of each pair to avoid duplicates.
-        if edge_id > edge.pair {
+        if edge_id > edge.pair.0 {
             continue;
         }
 
         let face_a = edge_id / 3;
-        let face_b = edge.pair / 3;
+        let face_b = edge.pair.0 / 3;
         let na_z = manifold.face_normals[face_a].z;
         let nb_z = manifold.face_normals[face_b].z;
 
@@ -166,9 +166,9 @@ pub fn compute_projection<T: BoolReal + BoolOpsNum>(manifold: &Manifold<T>) -> R
         if na_up != nb_up {
             if nb_up {
                 // The pair's face points up — store the pair for consistent winding.
-                edge_ids.entry(manifold.hs[edge.pair].tail).or_default().push_front(edge.pair);
+                edge_ids.entry(manifold.hs[edge.pair.0].tail.0).or_default().push_front(edge.pair.0);
             } else {
-                edge_ids.entry(edge.tail).or_default().push_front(edge_id);
+                edge_ids.entry(edge.tail.0).or_default().push_front(edge_id);
             }
         }
     }
@@ -176,14 +176,14 @@ pub fn compute_projection<T: BoolReal + BoolOpsNum>(manifold: &Manifold<T>) -> R
     let mut polygons = Vec::new();
     while let Some(first_edge_id) = edge_ids.next_starting_edge() {
         let mut current_edge_id = first_edge_id;
-        let first_vertex = manifold.hs[first_edge_id].tail;
-        let first_point = manifold.ps[manifold.hs[first_edge_id].head];
+        let first_vertex = manifold.hs[first_edge_id].tail.0;
+        let first_point = manifold.ps[manifold.hs[first_edge_id].head.0];
         let mut line_string = vec![Coord { x: first_point.x, y: first_point.y }];
 
         loop {
             // If the next step would bring us back to the start vertex,
             // we're done — don't try to look it up in the map.
-            if manifold.hs[current_edge_id].head == first_vertex {
+            if manifold.hs[current_edge_id].head.0 == first_vertex {
                 break;
             }
         
@@ -193,7 +193,7 @@ pub fn compute_projection<T: BoolReal + BoolOpsNum>(manifold: &Manifold<T>) -> R
         
             current_edge_id = next_edge_id;
         
-            let point = manifold.ps[manifold.hs[current_edge_id].head];
+            let point = manifold.ps[manifold.hs[current_edge_id].head.0];
             line_string.push(Coord { x: point.x, y: point.y });
         }
 
@@ -232,7 +232,7 @@ pub fn compute_slice<T: BoolReal + BoolOpsNum>(manifold: &Manifold<T>, height: T
         .collision([Query::Bb(bounding_box)], &mut |_query_id, triangle_id| {
             let z_points = [0, 1, 2]
                 .into_iter()
-                .map(|j| manifold.ps[manifold.hs[3 * triangle_id + j].tail].z);
+                .map(|j| manifold.ps[manifold.hs[3 * triangle_id + j].tail.0].z);
 
             // We have to account for NaN with these min/max functions, so we're going to just
             // filter out the NaNs.
@@ -261,8 +261,8 @@ pub fn compute_slice<T: BoolReal + BoolOpsNum>(manifold: &Manifold<T>, height: T
         
         let mut vertex_index = 0;
         for j in [0, 1, 2] {
-            if manifold.ps[manifold.hs[3 * start_triangle_id + j].tail].z > height &&
-                manifold.ps[manifold.hs[3 * start_triangle_id + next3(j)].tail].z <= height {
+            if manifold.ps[manifold.hs[3 * start_triangle_id + j].tail.0].z > height &&
+                manifold.ps[manifold.hs[3 * start_triangle_id + next3(j)].tail.0].z <= height {
               vertex_index = next3(j);
               break;
             }
@@ -273,18 +273,18 @@ pub fn compute_slice<T: BoolReal + BoolOpsNum>(manifold: &Manifold<T>, height: T
         loop {
             triangle_ids.remove(&current_triangle_id);
 
-            if manifold.ps[manifold.hs[3 * current_triangle_id + vertex_index].head].z <= height {
+            if manifold.ps[manifold.hs[3 * current_triangle_id + vertex_index].head.0].z <= height {
               vertex_index = next3(vertex_index);
             }
 
             let up = &manifold.hs[3 * current_triangle_id + vertex_index];
-            let below = manifold.ps[up.tail];
-            let above = manifold.ps[up.head];
+            let below = manifold.ps[up.tail.0];
+            let above = manifold.ps[up.head.0];
             let a = (height - below.z) / (above.z - below.z);
             let point = below.lerp(&above, a);
             line_string.push(geo::Coord { x: point.x, y: point.y });
 
-            let pair = up.pair;
+            let pair = up.pair.0;
             current_triangle_id = pair / 3;
             vertex_index = next3(pair % 3);
 

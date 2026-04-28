@@ -100,7 +100,7 @@ pub fn assemble_halfs(hs: &[HalfEdge], hid_f: &[i32], fid: usize) -> Vec<Vec<usi
     let mut v2h = BTreeMap::new();
 
     for (i, half) in hs.iter().enumerate().skip(bgn).take(num) {
-        let id = half.tail;
+        let id = half.tail.0;
         v2h.entry(id).or_insert_with(VecDeque::new).push_front(i);
     }
 
@@ -118,7 +118,7 @@ pub fn assemble_halfs(hs: &[HalfEdge], hid_f: &[i32], fid: usize) -> Vec<Vec<usi
         }
         loops.last_mut().unwrap().push(hid1);
 
-        let edge_id = hs[hid1].head;
+        let edge_id = hs[hid1].head.0;
         let queue = v2h.get_mut(&edge_id).unwrap();
         hid1 = queue.pop_back().unwrap();
         if queue.is_empty() {
@@ -133,26 +133,26 @@ fn single_triangulate<T: BoolReal>(b45: &Boolean45<T>, hid: usize) -> Vec<Vector
     let mut tails = vec![];
     let mut heads = vec![];
     for id in idcs.iter() {
-        tails.push(b45.hs[*id].tail);
-        heads.push(b45.hs[*id].head);
+        tails.push(b45.hs[*id].tail.0);
+        heads.push(b45.hs[*id].head.0);
     }
     if heads[0] == tails[2] {
         idcs.swap(1, 2);
     }
 
     vec![Vector3::new(
-        b45.hs[idcs[0]].tail,
-        b45.hs[idcs[1]].tail,
-        b45.hs[idcs[2]].tail,
+        b45.hs[idcs[0]].tail.0,
+        b45.hs[idcs[1]].tail.0,
+        b45.hs[idcs[2]].tail.0,
     )]
 }
 
 fn square_triangulate<T: BoolReal>(b45: &Boolean45<T>, fid: usize, eps: T) -> Vec<Vector3<usize>> {
     let ccw = |tri: Vector3<usize>| {
         is_ccw_3d(
-            &b45.ps[b45.hs[tri[0]].tail],
-            &b45.ps[b45.hs[tri[1]].tail],
-            &b45.ps[b45.hs[tri[2]].tail],
+            &b45.ps[b45.hs[tri[0]].tail.0],
+            &b45.ps[b45.hs[tri[1]].tail.0],
+            &b45.ps[b45.hs[tri[2]].tail.0],
             &b45.ns[fid],
             eps,
         ) >= 0
@@ -174,8 +174,8 @@ fn square_triangulate<T: BoolReal>(b45: &Boolean45<T>, fid: usize, eps: T) -> Ve
     if !(ccw(tris[0][0]) && ccw(tris[0][1])) {
         choice = 1;
     } else if ccw(tris[1][0]) && ccw(tris[1][1]) {
-        let diag0 = b45.ps[b45.hs[q[0]].tail] - b45.ps[b45.hs[q[2]].tail];
-        let diag1 = b45.ps[b45.hs[q[1]].tail] - b45.ps[b45.hs[q[3]].tail];
+        let diag0 = b45.ps[b45.hs[q[0]].tail.0] - b45.ps[b45.hs[q[2]].tail.0];
+        let diag1 = b45.ps[b45.hs[q[1]].tail.0] - b45.ps[b45.hs[q[3]].tail.0];
         if diag0.norm() > diag1.norm() {
             choice = 1;
         }
@@ -183,7 +183,7 @@ fn square_triangulate<T: BoolReal>(b45: &Boolean45<T>, fid: usize, eps: T) -> Ve
 
     tris[choice]
         .iter()
-        .map(|t| Vector3::new(b45.hs[t.x].tail, b45.hs[t.y].tail, b45.hs[t.z].tail))
+        .map(|t| Vector3::new(b45.hs[t.x].tail.0, b45.hs[t.y].tail.0, b45.hs[t.z].tail.0))
         .collect()
 }
 
@@ -195,7 +195,7 @@ fn general_triangulate<T: BoolReal>(b45: &Boolean45<T>, fid: usize, eps: T) -> V
         .map(|poly| {
             poly.iter()
                 .map(|&e| {
-                    let i = b45.hs[e].tail;
+                    let i = b45.hs[e].tail.0;
                     let p = compute_aa_proj(&proj, &b45.ps[i]);
                     Pt { pos: p, idx: e }
                 })
@@ -206,7 +206,7 @@ fn general_triangulate<T: BoolReal>(b45: &Boolean45<T>, fid: usize, eps: T) -> V
     EarClip::new(&polys, eps)
         .triangulate()
         .iter()
-        .map(|t| Vector3::new(b45.hs[t.x].tail, b45.hs[t.y].tail, b45.hs[t.z].tail))
+        .map(|t| Vector3::new(b45.hs[t.x].tail.0, b45.hs[t.y].tail.0, b45.hs[t.z].tail.0))
         .collect()
 }
 

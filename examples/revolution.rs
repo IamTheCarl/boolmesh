@@ -151,9 +151,9 @@ fn spawn_model(
     let mut pos = vec![];
     let mut vns = vec![];
     for (fid, hs) in model.hs.chunks(3).enumerate() {
-        let p0 = model.ps[hs[0].tail];
-        let p1 = model.ps[hs[1].tail];
-        let p2 = model.ps[hs[2].tail];
+        let p0 = model.ps[hs[0].tail.0];
+        let p1 = model.ps[hs[1].tail.0];
+        let p2 = model.ps[hs[2].tail.0];
         let n = model.face_normals[fid];
         pos.push([p0.x as f32, p0.y as f32, p0.z as f32]);
         pos.push([p1.x as f32, p1.y as f32, p1.z as f32]);

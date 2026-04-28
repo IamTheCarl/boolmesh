@@ -141,56 +141,86 @@ pub enum OpType {
 }
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct EdgeId(pub usize);
+
+impl EdgeId {
+    pub const INVALID: Self = Self(usize::MAX);
+}
+
+impl Default for EdgeId {
+    fn default() -> Self {
+        Self(usize::MAX)
+    }
+}
+
+impl From<EdgeId> for usize {
+    fn from(edge_id: EdgeId) -> usize {
+        edge_id.0
+    }
+}
+
+impl From<usize> for EdgeId {
+    fn from(id: usize) -> Self {
+        Self(id)
+    }
+}
+
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct HalfEdge {
-    pub tail: usize,
-    pub head: usize,
-    pub pair: usize,
+    pub tail: EdgeId,
+    pub head: EdgeId,
+    pub pair: EdgeId,
 }
 
 impl Default for HalfEdge {
     fn default() -> Self {
         Self {
-            tail: usize::MAX,
-            head: usize::MAX,
-            pair: usize::MAX,
+            tail: EdgeId::INVALID,
+            head: EdgeId::INVALID,
+            pair: EdgeId::INVALID,
         }
     }
 }
 
 impl HalfEdge {
     pub fn new(tail: usize, head: usize, pair: usize) -> Self {
-        Self { tail, head, pair }
+        Self {
+            tail: EdgeId(tail),
+            head: EdgeId(head),
+            pair: EdgeId(pair),
+        }
     }
     pub fn new_without_pair(tail: usize, head: usize) -> Self {
         Self {
-            tail,
-            head,
-            pair: usize::MAX,
+            tail: EdgeId(tail),
+            head: EdgeId(head),
+            pair: EdgeId::INVALID,
         }
     }
     pub fn is_forward(&self) -> bool {
-        self.tail < self.head
+        self.tail.0 < self.head.0
     }
     pub fn tail(&self) -> Option<usize> {
-        if self.tail == usize::MAX {
+        if self.tail.0 == usize::MAX {
             None
         } else {
-            Some(self.tail)
+            Some(self.tail.0)
         }
     }
     pub fn head(&self) -> Option<usize> {
-        if self.head == usize::MAX {
+        if self.head.0 == usize::MAX {
             None
         } else {
-            Some(self.head)
+            Some(self.head.0)
         }
     }
     pub fn pair(&self) -> Option<usize> {
-        if self.pair == usize::MAX {
+        if self.pair.0 == usize::MAX {
             None
         } else {
-            Some(self.pair)
+            Some(self.pair.0)
         }
     }
 }

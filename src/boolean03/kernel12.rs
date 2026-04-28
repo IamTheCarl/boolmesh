@@ -30,9 +30,9 @@ impl<'a, T: BoolReal> Kernel12<'a, T> {
 
         let mut k = 0;
 
-        for vid in [h.tail, h.head].iter() {
+        for vid in [h.tail.0, h.head.0].iter() {
             if let Some((s, z)) = self.k02.op(*vid, q2) {
-                let f = (*vid == h.tail) == self.fwd;
+                let f = (*vid == h.tail.0) == self.fwd;
                 x12 += s * if f { 1 } else { -1 };
                 if k < 2 && (k == 0 || (s != 0) != shadow_) {
                     shadow_ = s != 0;
@@ -50,7 +50,7 @@ impl<'a, T: BoolReal> Kernel12<'a, T> {
         for i in 0..3 {
             let q1 = 3 * q2 + i;
             let h = &self.hs_q[q1];
-            let q1f = if h.is_forward() { q1 } else { h.pair };
+            let q1f = if h.is_forward() { q1 } else { h.pair.0 };
             let op = if self.fwd {
                 self.k11.op(p1, q1f)
             } else {
@@ -131,7 +131,7 @@ pub fn intersect12<T: BoolReal>(
         .iter()
         .enumerate()
         .filter(|(_, h)| h.is_forward())
-        .map(|(i, h)| Query::Bb(BBox::new(Some(i), &[ma.ps[h.tail], ma.ps[h.head]])));
+        .map(|(i, h)| Query::Bb(BBox::new(Some(i), &[ma.ps[h.tail.0], ma.ps[h.head.0]])));
 
     let mut x12_ = vec![];
     let mut v12_ = vec![];
