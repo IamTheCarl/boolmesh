@@ -7,7 +7,7 @@ use super::{
     collapse_edge, form_loops, head_of, hids_of, is01_longest_2d, next_of, pair_of, pair_up,
     remove_if_folded, tail_of,
 };
-use crate::{common::BoolReal, compute_aa_proj, get_aa_proj_matrix, is_ccw_2d, EdgeId, HalfEdge, Tref};
+use crate::{common::BoolReal, compute_aa_proj, get_aa_proj_matrix, is_ccw_2d, HalfEdge, HalfEdgeId, Tref};
 
 fn record<T: BoolReal>(
     hs: &[HalfEdge],
@@ -22,28 +22,28 @@ fn record<T: BoolReal>(
         return false;
     }
     let h0 = hid;
-    let h1 = h.pair().unwrap();
+    let h1 = h.pair().unwrap() as usize;
 
-    let n0 = hs[next_of(h0)].head.0;
-    let n1 = hs[next_of(h1)].head.0;
-    if h.tail.0 < oft && h.head.0 < oft && n0 < oft && n1 < oft {
+    let n0 = usize::from(hs[next_of(h0)].head);
+    let n1 = usize::from(hs[next_of(h1)].head);
+    if usize::from(h.tail) < oft && usize::from(h.head) < oft && n0 < oft && n1 < oft {
         return false;
     }
 
     let (e0, e1, e2) = hids_of(h0);
-    let p = get_aa_proj_matrix(&ns[h0 / 3]);
-    let a = compute_aa_proj(&p, &ps[hs[e0].tail.0]);
-    let b = compute_aa_proj(&p, &ps[hs[e1].tail.0]);
-    let c = compute_aa_proj(&p, &ps[hs[e2].tail.0]);
+    let p = get_aa_proj_matrix(&ns[HalfEdgeId::from(h0).face_id()]);
+    let a = compute_aa_proj(&p, &ps[usize::from(hs[e0].tail)]);
+    let b = compute_aa_proj(&p, &ps[usize::from(hs[e1].tail)]);
+    let c = compute_aa_proj(&p, &ps[usize::from(hs[e2].tail)]);
     if is_ccw_2d(&a, &b, &c, tol) > 0 || !is01_longest_2d(&a, &b, &c) {
         return false;
     }
 
     let (e0, e1, e2) = hids_of(h1);
-    let p = get_aa_proj_matrix(&ns[h1 / 3]);
-    let a = compute_aa_proj(&p, &ps[hs[e0].tail.0]);
-    let b = compute_aa_proj(&p, &ps[hs[e1].tail.0]);
-    let c = compute_aa_proj(&p, &ps[hs[e2].tail.0]);
+    let p = get_aa_proj_matrix(&ns[HalfEdgeId::from(h1).face_id()]);
+    let a = compute_aa_proj(&p, &ps[usize::from(hs[e0].tail)]);
+    let b = compute_aa_proj(&p, &ps[usize::from(hs[e1].tail)]);
+    let c = compute_aa_proj(&p, &ps[usize::from(hs[e2].tail)]);
     is_ccw_2d(&a, &b, &c, tol) > 0 || is01_longest_2d(&a, &b, &c)
 }
 
@@ -97,10 +97,10 @@ fn recursive_edge_swap<T: BoolReal>(
         // The 0-verts are swapped to the opposite 2-verts.
         let v0 = tail_of(hs, t0e.2);
         let v1 = tail_of(hs, t1e.2);
-        hs[t0e.0].tail = EdgeId(v1);
-        hs[t0e.2].head = EdgeId(v1);
-        hs[t1e.0].tail = EdgeId(v0);
-        hs[t1e.2].head = EdgeId(v0);
+        hs[t0e.0].tail = crate::VertexId::from(v1);
+        hs[t0e.2].head = crate::VertexId::from(v1);
+        hs[t1e.0].tail = crate::VertexId::from(v0);
+        hs[t1e.2].head = crate::VertexId::from(v0);
 
         let pair0 = pair_of(hs, t1e.2);
         let pair1 = pair_of(hs, t0e.2);

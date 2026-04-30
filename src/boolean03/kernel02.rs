@@ -35,10 +35,10 @@ impl<'a, T: BoolReal> Kernel02<'a, T> {
         for i in 0..3 {
             let q1 = 3 * q2 + i;
             let half = self.hs_q[q1].clone();
-            let q1_f = if half.is_forward() { q1 } else { half.pair.0 };
+            let q1_f = if half.is_forward() { q1 } else { usize::from(half.pair) };
 
             if !fwd {
-                let q_vert = self.hs_q[q1_f].tail.0;
+                let q_vert = usize::from(self.hs_q[q1_f].tail);
                 let diff = pos_p - self.ps_q[q_vert];
                 let metric = diff.norm_squared();
                 if metric < min_metric {

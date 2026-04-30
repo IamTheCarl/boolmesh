@@ -543,17 +543,17 @@ mod test_simplification {
             if h.tail().is_none() {
                 assert_eq!(d, -1);
             } else {
-                assert_eq!(a.0 as i32, d);
+                assert_eq!(a.to_u32() as i32, d);
             }
             if h.head().is_none() {
                 assert_eq!(e, -1);
             } else {
-                assert_eq!(b.0 as i32, e);
+                assert_eq!(b.to_u32() as i32, e);
             }
             if h.pair().is_none() {
                 assert_eq!(f, -1);
             } else {
-                assert_eq!(c.0 as i32, f);
+                assert_eq!(c.to_u32() as i32, f);
             }
         }
 
@@ -590,5 +590,32 @@ mod test_mesh_cleanup {
 
         assert_eq!(mfd.nv, 4);
         assert_eq!(mfd.nf, 4);
+    }
+}
+
+#[cfg(test)]
+mod test_projection {
+    use crate::compute_projection;
+    use crate::prelude::{compose, generate_cube, Manifold};
+
+    #[test]
+    fn test_projection_cube() {
+        let cube = generate_cube::<f64>().unwrap();
+        let result = compute_projection(&cube);
+        assert!(result.is_ok());
+        let polygon = result.unwrap();
+        assert!(!polygon.0.is_empty());
+    }
+
+    #[test]
+    fn test_projection_composed() {
+        let a = generate_cube::<f64>().unwrap();
+        let b = generate_cube::<f64>().unwrap();
+        let meshes: Vec<Manifold<f64>> = vec![a, b];
+        let composed = compose(&meshes).unwrap();
+        let result = compute_projection(&composed);
+        assert!(result.is_ok());
+        let polygon = result.unwrap();
+        assert!(!polygon.0.is_empty());
     }
 }

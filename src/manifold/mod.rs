@@ -9,7 +9,7 @@ use super::hmesh::Hmesh;
 use crate::collider::{morton_code, MortonCollider, K_NO_CODE};
 use crate::common::BoolReal;
 use crate::manifold::hmesh::HmeshError;
-use crate::{next_of, EdgeId, HalfEdge};
+use crate::{next_of, HalfEdge, HalfEdgeId};
 use bounds::BBox;
 use fxhash::FxBuildHasher;
 use nalgebra::{Matrix4, Point3, Rotation3, Vector3};
@@ -121,7 +121,7 @@ impl<T: BoolReal> Manifold<T> {
     pub fn get_indices(&self) -> Vec<Vector3<usize>> {
         self.hs
             .chunks(3)
-            .map(|cs| Vector3::new(cs[0].tail.0, cs[1].tail.0, cs[2].tail.0))
+            .map(|cs| Vector3::new(usize::from(cs[0].tail), usize::from(cs[1].tail), usize::from(cs[2].tail)))
             .collect()
     }
 
@@ -143,14 +143,14 @@ impl<T: BoolReal> Manifold<T> {
             if h.tail().is_none() || h.head().is_none() {
                 return true;
             }
-            match h.pair() {
+match h.pair() {
                 None => false,
                 Some(pair) => {
                     let mut good = true;
-                    good &= self.hs[pair].pair() == Some(i);
-                    good &= h.tail.0 != h.head.0;
-                    good &= h.tail.0 == self.hs[pair].head.0;
-                    good &= h.head.0 == self.hs[pair].tail.0;
+                    good &= self.hs[pair as usize].pair() == Some(i as u32);
+                    good &= u32::from(h.tail) != u32::from(h.head);
+                    good &= u32::from(h.tail) == self.hs[pair as usize].head().unwrap();
+                    good &= u32::from(h.head) == self.hs[pair as usize].tail().unwrap();
                     good
                 }
             }
@@ -190,6 +190,30 @@ impl<T: BoolReal> Manifold<T> {
             .collect();
         Manifold::new_impl(p, self.get_indices(), None, None)
     }
+
+    #[inline]
+    pub fn pos_at(&self, vid: usize) -> Vector3<T> { self.ps[vid] }
+
+    #[inline]
+    pub fn face_vertex_ids(&self, fid: usize) -> [usize; 3] {
+        [
+            usize::from(self.hs[3 * fid].tail),
+            usize::from(self.hs[3 * fid + 1].tail),
+            usize::from(self.hs[3 * fid + 2].tail),
+        ]
+    }
+
+    #[inline]
+    pub fn face_positions(&self, fid: usize) -> [Vector3<T>; 3] {
+        [
+            self.ps[usize::from(self.hs[3 * fid].tail)],
+            self.ps[usize::from(self.hs[3 * fid + 1].tail)],
+            self.ps[usize::from(self.hs[3 * fid + 2].tail)],
+        ]
+    }
+
+    #[inline]
+    pub fn halfedge_at(&self, hid: usize) -> &HalfEdge { &self.hs[hid] }
 }
 
 #[derive(Debug, Error)]
@@ -281,9 +305,9 @@ fn compute_coplanar_idx<T: BoolReal>(
         let area = if hs[i].tail().is_none() {
             T::zero()
         } else {
-            let p0 = ps[hs[i].tail.0];
-            let p1 = ps[hs[i].head.0];
-            let p2 = ps[hs[i + 1].head.0];
+            let p0 = ps[usize::from(hs[i].tail)];
+            let p1 = ps[usize::from(hs[i].head)];
+            let p2 = ps[usize::from(hs[i + 1].head)];
             (p1 - p0).cross(&(p2 - p0)).norm_squared()
         };
         priority.push((area, t));
@@ -299,23 +323,23 @@ fn compute_coplanar_idx<T: BoolReal>(
         res[*t] = *t as i32;
 
         let i = t * 3;
-        let p = ps[hs[i].tail.0];
+        let p = ps[usize::from(hs[i].tail)];
         let n = ns[*t];
 
         interior.clear();
         interior.extend_from_slice(&[i, i + 1, i + 2]);
 
         while let Some(hi) = interior.pop() {
-            let h1 = next_of(hs[hi].pair.0);
-            let t1 = h1 / 3;
+            let h1 = HalfEdgeId::from(usize::from(hs[hi].pair)).next_in_face();
+            let t1 = HalfEdgeId::from(h1).face_id();
 
             if res[t1] != -1 {
                 continue;
             }
 
-            if (ps[hs[h1].head.0] - p).dot(&n).abs() < tol {
+            if (ps[usize::from(hs[h1].head)] - p).dot(&n).abs() < tol {
                 res[t1] = *t as i32;
-                if interior.last().copied() == Some(hs[h1].pair.0) {
+                if interior.last().copied() == Some(usize::from(hs[h1].pair)) {
                     interior.pop();
                 } else {
                     interior.push(h1);
@@ -343,8 +367,8 @@ pub fn cleanup_unused_verts<T: BoolReal>(ps: &mut Vec<Vector3<T>>, hs: &mut Vec<
         if h.pair().is_none() {
             continue;
         }
-        h.tail = EdgeId(old2new[h.tail.0]);
-        h.head = EdgeId(old2new[h.head.0]);
+        h.tail = crate::VertexId::from(old2new[h.tail().unwrap() as usize]);
+        h.head = crate::VertexId::from(old2new[h.head().unwrap() as usize]);
     }
 
     // truncate pos container

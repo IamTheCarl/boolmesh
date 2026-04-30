@@ -24,8 +24,8 @@ impl<'a, T: BoolReal> Kernel11<'a, T> {
         let mut shadow_ = false;
         let mut s11 = 0;
 
-        let p0 = [self.hs_p[p1].tail.0, self.hs_p[p1].head.0];
-        let q0 = [self.hs_q[q1].tail.0, self.hs_q[q1].head.0];
+        let p0 = [usize::from(self.hs_p[p1].tail), usize::from(self.hs_p[p1].head)];
+        let q0 = [usize::from(self.hs_q[q1].tail), usize::from(self.hs_q[q1].head)];
 
         for i in 0..2 {
             if let Some((s, yz)) = shadows01(
@@ -75,8 +75,8 @@ impl<'a, T: BoolReal> Kernel11<'a, T> {
 
         assert_eq!(k, 2, "Boolean manifold error: s11");
         let xyzz11 = intersect(p_rl[0], p_rl[1], q_rl[0], q_rl[1]);
-        let p1s = self.hs_p[p1].tail.0;
-        let p1e = self.hs_p[p1].head.0;
+        let p1s = usize::from(self.hs_p[p1].tail);
+        let p1e = usize::from(self.hs_p[p1].head);
         let d1 = self.ps_p[p1s] - Vector3::new(xyzz11.x, xyzz11.y, xyzz11.z);
         let d2 = self.ps_p[p1e] - Vector3::new(xyzz11.x, xyzz11.y, xyzz11.z);
         let b2 = d1.norm_squared();

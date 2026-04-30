@@ -8,7 +8,7 @@ use crate::boolean03::Boolean03;
 use crate::bounds::BBox;
 use crate::common::BoolReal;
 use crate::OpType;
-use crate::{face_of, EdgeId, HalfEdge, Manifold, Tref};
+use crate::{face_of, HalfEdge, HalfEdgeId, Manifold, Tref};
 use std::mem;
 
 fn duplicate_verts<T: BoolReal>(
@@ -68,10 +68,10 @@ fn size_output<T: BoolReal>(
 
     // equivalent to CountVerts
     for (i, h) in mp.hs.iter().enumerate() {
-        side_p[face_of(i)] += i03[h.tail.0].abs();
+        side_p[face_of(i)] += i03[usize::from(h.tail)].abs();
     }
     for (i, h) in mq.hs.iter().enumerate() {
-        side_q[face_of(i)] += i30[h.tail.0].abs();
+        side_q[face_of(i)] += i30[usize::from(h.tail)].abs();
     }
 
     // equivalent to CountNewVerts
@@ -80,7 +80,7 @@ fn size_output<T: BoolReal>(
         let hid1 = mp.hs[hid0].pair;
         let inc = i12[i].abs();
         side_p[face_of(hid0)] += inc;
-        side_p[face_of(hid1.0)] += inc;
+        side_p[face_of(usize::from(hid1))] += inc;
         side_q[p1q2[i][1]] += inc;
     }
 
@@ -89,7 +89,7 @@ fn size_output<T: BoolReal>(
         let hid1 = mq.hs[hid0].pair;
         let inc = i21[i].abs();
         side_q[face_of(hid0)] += inc;
-        side_q[face_of(hid1.0)] += inc;
+        side_q[face_of(usize::from(hid1))] += inc;
         side_p[p2q1[i][0]] += inc;
     }
 
@@ -165,9 +165,9 @@ fn add_new_edge_verts<T: BoolReal>(
             (fid_q, face_of(hid0))
         };
         let key_r = if fwd {
-            (face_of(hid1.0), fid_q)
+            (face_of(usize::from(hid1)), fid_q)
         } else {
-            (fid_q, face_of(hid1.0))
+            (fid_q, face_of(usize::from(hid1)))
         };
         let dir = inc < 0;
         pt_old.entry(hid_p).or_default();
@@ -258,23 +258,23 @@ fn append_partial_edges<T: BoolReal>(
         let hpos_p = pt;
         let h = &hs_p[*hid_p];
         whole_flag[*hid_p] = false;
-        whole_flag[h.pair.0] = false;
+        whole_flag[usize::from(h.pair)] = false;
 
         // assigning 0-1 value to hpos_p
-        let dif = ps_p[h.head.0] - ps_p[h.tail.0];
+        let dif = ps_p[usize::from(h.head)] - ps_p[usize::from(h.tail)];
         for p in hpos_p.iter_mut() {
             p.val = dif.dot(&ps_r[p.vid]);
         }
 
-        let i_tail = i03[h.tail.0]; // mostly 0 or 1
-        let i_head = i03[h.head.0]; // mostly 0 or 1
-        let p_tail = ps_r[vid_p2r[h.tail.0] as usize];
-        let p_head = ps_r[vid_p2r[h.head.0] as usize];
+        let i_tail = i03[usize::from(h.tail)]; // mostly 0 or 1
+        let i_head = i03[usize::from(h.head)]; // mostly 0 or 1
+        let p_tail = ps_r[vid_p2r[usize::from(h.tail)] as usize];
+        let p_head = ps_r[vid_p2r[usize::from(h.head)] as usize];
 
         for i in 0..i_tail.abs() as usize {
             hpos_p.push(EdgePt {
                 val: p_tail.dot(&dif),
-                vid: vid_p2r[h.tail.0] as usize + i,
+                vid: vid_p2r[usize::from(h.tail)] as usize + i,
                 cid: usize::MAX,
                 is_tail: i_tail > 0,
             });
@@ -282,7 +282,7 @@ fn append_partial_edges<T: BoolReal>(
         for i in 0..i_head.abs() as usize {
             hpos_p.push(EdgePt {
                 val: p_head.dot(&dif),
-                vid: vid_p2r[h.head.0] as usize + i,
+                vid: vid_p2r[usize::from(h.head)] as usize + i,
                 cid: usize::MAX,
                 is_tail: i_head < 0,
             });
@@ -290,7 +290,7 @@ fn append_partial_edges<T: BoolReal>(
 
         let mut half_seq = pair_up(hpos_p);
         let fp_l = face_of(*hid_p);
-        let fp_r = face_of(h.pair.0);
+        let fp_r = HalfEdgeId::from(usize::from(h.pair)).face_id();
         let fid_l = fid_p2r[fp_l] as usize;
         let fid_r = fid_p2r[fp_r] as usize;
 
@@ -315,8 +315,8 @@ fn append_partial_edges<T: BoolReal>(
             let bk_edge = face_ptr_r[fid_r] as usize;
             face_ptr_r[fid_l] += 1;
             face_ptr_r[fid_r] += 1;
-            hs_r[fw_edge] = HalfEdge::new(h.tail.0, h.head.0, bk_edge);
-            hs_r[bk_edge] = HalfEdge::new(h.head.0, h.tail.0, fw_edge);
+            hs_r[fw_edge] = HalfEdge::new(usize::from(h.tail), usize::from(h.head), bk_edge);
+            hs_r[bk_edge] = HalfEdge::new(usize::from(h.head), usize::from(h.tail), fw_edge);
             rs_r[fw_edge] = fw_tri;
             rs_r[bk_edge] = bk_tri;
         }
@@ -363,8 +363,8 @@ fn append_new_edges<T: BoolReal>(
             let bk_edge = face_ptr_r[fid_r] as usize;
             face_ptr_r[fid_l] += 1;
             face_ptr_r[fid_r] += 1;
-            hs_r[fw_edge] = HalfEdge::new(h.tail.0, h.head.0, bk_edge);
-            hs_r[bk_edge] = HalfEdge::new(h.head.0, h.tail.0, fw_edge);
+            hs_r[fw_edge] = HalfEdge::new(usize::from(h.tail), usize::from(h.head), bk_edge);
+            hs_r[bk_edge] = HalfEdge::new(usize::from(h.head), usize::from(h.tail), fw_edge);
             rs_r[fw_edge] = fw_ref;
             rs_r[bk_edge] = bk_ref;
         }
@@ -388,7 +388,7 @@ fn append_whole_edges(
         }
 
         let mut h = hp.clone();
-        let inc = i03[h.tail.0];
+        let inc = i03[usize::from(h.tail)];
         if inc == 0 {
             continue;
         }
@@ -396,11 +396,11 @@ fn append_whole_edges(
             mem::swap(&mut h.tail, &mut h.head);
         }
 
-        h.tail = EdgeId(vid_p2r[h.tail.0] as usize);
-        h.head = EdgeId(vid_p2r[h.head.0] as usize);
+        h.tail = crate::VertexId::from(vid_p2r[usize::from(h.tail)] as usize);
+        h.head = crate::VertexId::from(vid_p2r[usize::from(h.head)] as usize);
 
         let fp_l = face_of(i);
-        let fp_r = face_of(hp.pair.0);
+        let fp_r = HalfEdgeId::from(usize::from(hp.pair)).face_id();
         let fid_l = fid_p2r[fp_l] as usize;
         let fid_r = fid_p2r[fp_r] as usize;
         let fw_ref = Tref {
@@ -419,12 +419,12 @@ fn append_whole_edges(
             let bk_edge = face_ptr_r[fid_r] as usize;
             face_ptr_r[fid_l] += 1;
             face_ptr_r[fid_r] += 1;
-            hs_r[fw_edge] = HalfEdge::new(h.tail.0, h.head.0, bk_edge);
-            hs_r[bk_edge] = HalfEdge::new(h.head.0, h.tail.0, fw_edge);
+            hs_r[fw_edge] = HalfEdge::new(usize::from(h.tail), usize::from(h.head), bk_edge);
+            hs_r[bk_edge] = HalfEdge::new(usize::from(h.head), usize::from(h.tail), fw_edge);
             rs_r[fw_edge] = fw_ref;
             rs_r[bk_edge] = bk_ref;
-            h.tail = EdgeId(h.tail.0 + 1);
-            h.head = EdgeId(h.head.0 + 1);
+            h.tail = crate::VertexId::from(usize::from(h.tail) + 1);
+            h.head = crate::VertexId::from(usize::from(h.head) + 1);
         }
     }
 }

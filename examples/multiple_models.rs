@@ -50,9 +50,9 @@ fn setup(
         let mut pos = vec![];
         let mut vns = vec![];
         for (fid, hs) in mf.hs.chunks(3).enumerate() {
-            let p0 = mf.ps[hs[0].tail.0];
-            let p1 = mf.ps[hs[1].tail.0];
-            let p2 = mf.ps[hs[2].tail.0];
+            let p0 = mf.ps[usize::from(hs[0].tail)];
+            let p1 = mf.ps[usize::from(hs[1].tail)];
+            let p2 = mf.ps[usize::from(hs[2].tail)];
             let n  = mf.face_normals[fid];
             pos.push([p0.x as f32, p0.y as f32, p0.z as f32]);
             pos.push([p1.x as f32, p1.y as f32, p1.z as f32]);

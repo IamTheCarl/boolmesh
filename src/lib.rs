@@ -34,9 +34,11 @@ use crate::triangulation::triangulate;
 use crate::triangulation::TriangulationError;
 
 pub use crate::common::BoolReal;
+pub use crate::common::{VertexId, HalfEdgeId};
 
 pub mod prelude {
     pub use crate::common::OpType;
+    pub use crate::common::{VertexId, HalfEdgeId};
     pub use crate::compose::{
         compose, fractal, generate_cone, generate_cube, generate_cylinder,
         generate_icosphere, generate_torus, generate_uv_sphere, ExtrudePoly, ExtrusionError,
@@ -71,7 +73,7 @@ pub fn compute_boolean<T: BoolReal>(mp: &Manifold<T>, mq: &Manifold<T>, op: OpTy
         b45.ps,
         trg.hs
             .chunks(3)
-            .map(|hs| Vector3::new(hs[0].tail.0, hs[1].tail.0, hs[2].tail.0))
+            .map(|h| Vector3::new(usize::from(h[0].tail), usize::from(h[1].tail), usize::from(h[2].tail)))
             .collect(),
         Some(eps),
         Some(tol),
@@ -118,43 +120,16 @@ pub enum ProjectionError {
 pub fn compute_projection<T: BoolReal + BoolOpsNum>(manifold: &Manifold<T>) -> Result<MultiPolygon<T>, ProjectionError> {
     let mut edge_ids: BTreeMap<usize, VecDeque<usize>> = BTreeMap::new();
 
-    trait EdgeMap {
-        fn next_starting_edge(&mut self) -> Option<usize>;
-        fn next_edge<T: BoolReal>(&mut self, manifold: &Manifold<T>, current_edge_id: usize) -> Option<usize>;
-    }
-
-    impl EdgeMap for BTreeMap<usize, VecDeque<usize>> {
-        fn next_starting_edge(&mut self) -> Option<usize> {
-            let (&first_key, queue) = self.first_key_value()?;
-            let value = queue.back().copied();
-            let q = self.get_mut(&first_key).unwrap();
-            q.pop_back();
-            if q.is_empty() {
-                self.remove(&first_key);
-            }
-            value
-        }
-
-        fn next_edge<T: BoolReal>(&mut self, manifold: &Manifold<T>, current_edge_id: usize) -> Option<usize> {
-            let next_tail = manifold.hs[current_edge_id].head.0;
-            let queue = self.get_mut(&next_tail)?;
-            let value = queue.pop_back();
-            if queue.is_empty() {
-                self.remove(&next_tail);
-            }
-            value
-        }
-    }
-
     for (edge_id, edge) in manifold.hs.iter().enumerate() {
         // Each edge appears twice in the half-edge structure (as a pair),
         // so skip one of each pair to avoid duplicates.
-        if edge_id > edge.pair.0 {
+        if edge_id > usize::from(edge.pair_id()) {
             continue;
         }
 
+        let pair_he = usize::from(edge.pair_id());
         let face_a = edge_id / 3;
-        let face_b = edge.pair.0 / 3;
+        let face_b = HalfEdgeId::from(pair_he).face_id();
         let na_z = manifold.face_normals[face_a].z;
         let nb_z = manifold.face_normals[face_b].z;
 
@@ -166,41 +141,62 @@ pub fn compute_projection<T: BoolReal + BoolOpsNum>(manifold: &Manifold<T>) -> R
         if na_up != nb_up {
             if nb_up {
                 // The pair's face points up — store the pair for consistent winding.
-                edge_ids.entry(manifold.hs[edge.pair.0].tail.0).or_default().push_front(edge.pair.0);
+                edge_ids.entry(usize::from(manifold.hs[pair_he].tail)).or_default().push_front(pair_he);
             } else {
-                edge_ids.entry(edge.tail.0).or_default().push_front(edge_id);
+                edge_ids.entry(usize::from(edge.tail)).or_default().push_front(edge_id);
             }
         }
     }
 
-    let mut polygons = Vec::new();
-    while let Some(first_edge_id) = edge_ids.next_starting_edge() {
+ let mut polygons: Vec<_> = Vec::new();
+
+    loop {
+        let first_edge_id = match edge_ids.first_key_value() {
+            Some((&first_key, queue)) => {
+                let value = queue.back().copied();
+                let q = edge_ids.get_mut(&first_key).unwrap();
+                q.pop_back();
+                if q.is_empty() {
+                    edge_ids.remove(&first_key);
+                }
+                value.unwrap()
+            }
+            None => break,
+        };
         let mut current_edge_id = first_edge_id;
-        let first_vertex = manifold.hs[first_edge_id].tail.0;
-        let first_point = manifold.ps[manifold.hs[first_edge_id].head.0];
+        let first_vertex = usize::from(manifold.hs[first_edge_id].tail);
+        let first_point = manifold.ps[usize::from(manifold.hs[first_edge_id].head)];
         let mut line_string = vec![Coord { x: first_point.x, y: first_point.y }];
 
         loop {
             // If the next step would bring us back to the start vertex,
             // we're done — don't try to look it up in the map.
-            if manifold.hs[current_edge_id].head.0 == first_vertex {
+            if usize::from(manifold.hs[current_edge_id].head) == first_vertex {
                 break;
             }
         
-            let next_edge_id = edge_ids
-                .next_edge(manifold, current_edge_id)
-                .expect("Non-manifold edge");
-        
-            current_edge_id = next_edge_id;
-        
-            let point = manifold.ps[manifold.hs[current_edge_id].head.0];
-            line_string.push(Coord { x: point.x, y: point.y });
-        }
+            let next_tail = usize::from(manifold.hs[current_edge_id].head);
+            if let Some(queue) = edge_ids.get_mut(&next_tail) {
+                if let Some(next_edge_id) = queue.pop_back() {
+                    if queue.is_empty() {
+                        edge_ids.remove(&next_tail);
+                    }
+                    current_edge_id = next_edge_id;
+                } else {
+                    break;
+                }
+            } else {
+                break;
+            }
+         
+             let point = manifold.ps[usize::from(manifold.hs[current_edge_id].head)];
+             line_string.push(Coord { x: point.x, y: point.y });
+         }
 
-        let mut line_string = LineString(line_string);
-        line_string.close();
-        polygons.push(Polygon::new(line_string, vec![]));
-    }
+         let mut line_string = LineString(line_string);
+         line_string.close();
+         polygons.push(Polygon::new(line_string, vec![]));
+     }
 
     if polygons.is_empty() {
         Err(ProjectionError::NoPolygons)
@@ -232,7 +228,7 @@ pub fn compute_slice<T: BoolReal + BoolOpsNum>(manifold: &Manifold<T>, height: T
         .collision([Query::Bb(bounding_box)], &mut |_query_id, triangle_id| {
             let z_points = [0, 1, 2]
                 .into_iter()
-                .map(|j| manifold.ps[manifold.hs[3 * triangle_id + j].tail.0].z);
+                .map(|j| manifold.ps[usize::from(manifold.hs[3 * triangle_id + j].tail)].z);
 
             // We have to account for NaN with these min/max functions, so we're going to just
             // filter out the NaNs.
@@ -261,8 +257,8 @@ pub fn compute_slice<T: BoolReal + BoolOpsNum>(manifold: &Manifold<T>, height: T
         
         let mut vertex_index = 0;
         for j in [0, 1, 2] {
-            if manifold.ps[manifold.hs[3 * start_triangle_id + j].tail.0].z > height &&
-                manifold.ps[manifold.hs[3 * start_triangle_id + next3(j)].tail.0].z <= height {
+            if manifold.ps[usize::from(manifold.hs[3 * start_triangle_id + j].tail)].z > height &&
+                manifold.ps[usize::from(manifold.hs[3 * start_triangle_id + next3(j)].tail)].z <= height {
               vertex_index = next3(j);
               break;
             }
@@ -273,20 +269,20 @@ pub fn compute_slice<T: BoolReal + BoolOpsNum>(manifold: &Manifold<T>, height: T
         loop {
             triangle_ids.remove(&current_triangle_id);
 
-            if manifold.ps[manifold.hs[3 * current_triangle_id + vertex_index].head.0].z <= height {
+            if manifold.ps[usize::from(manifold.hs[3 * current_triangle_id + vertex_index].head)].z <= height {
               vertex_index = next3(vertex_index);
             }
 
             let up = &manifold.hs[3 * current_triangle_id + vertex_index];
-            let below = manifold.ps[up.tail.0];
-            let above = manifold.ps[up.head.0];
+            let below = manifold.ps[usize::from(up.tail)];
+            let above = manifold.ps[usize::from(up.head)];
             let a = (height - below.z) / (above.z - below.z);
             let point = below.lerp(&above, a);
             line_string.push(geo::Coord { x: point.x, y: point.y });
 
-            let pair = up.pair.0;
-            current_triangle_id = pair / 3;
-            vertex_index = next3(pair % 3);
+            let pair = usize::from(up.pair);
+            current_triangle_id = HalfEdgeId::from(pair).face_id();
+            vertex_index = next3(HalfEdgeId::from(pair).edge_index());
 
             if current_triangle_id == start_triangle_id {
                 break;

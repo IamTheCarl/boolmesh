@@ -4,7 +4,7 @@
 pub mod collapse;
 pub mod dedup;
 pub mod re_swap;
-use crate::{common::BoolReal, next_of, EdgeId, HalfEdge, Tref};
+use crate::{common::BoolReal, next_of, HalfEdge, Tref};
 use collapse::{collapse_collinear_edges, collapse_edge, collapse_short_edges};
 use dedup::dedupe_edges;
 use nalgebra::{Vector2, Vector3};
@@ -28,17 +28,17 @@ pub fn simplify_topology<T: BoolReal>(
 }
 
 fn head_of(hs: &[HalfEdge], i: usize) -> usize {
-    hs[i].head.0
+    usize::from(hs[i].head)
 }
 fn tail_of(hs: &[HalfEdge], i: usize) -> usize {
-    hs[i].tail.0
+    usize::from(hs[i].tail)
 }
 fn pair_of(hs: &[HalfEdge], i: usize) -> usize {
-    hs[i].pair.0
+    usize::from(hs[i].pair)
 }
 fn pair_up(hs: &mut [HalfEdge], i: usize, j: usize) {
-    hs[i].pair = EdgeId(j);
-    hs[j].pair = EdgeId(i);
+    hs[i].pair = crate::HalfEdgeId::from(j);
+    hs[j].pair = crate::HalfEdgeId::from(i);
 }
 fn hids_of(i: usize) -> (usize, usize, usize) {
     let j = next_of(i);
@@ -62,10 +62,10 @@ fn form_loops<T: BoolReal>(hs: &mut [HalfEdge], ps: &mut Vec<Vector3<T>>, bgn: u
     update_vid_around_star(hs, bgn_pair, end_pair, bgn_vid);
     update_vid_around_star(hs, end, bgn, end_vid);
 
-    hs[bgn].pair = EdgeId(end_pair);
-    hs[end_pair].pair = EdgeId(bgn);
-    hs[end].pair = EdgeId(bgn_pair);
-    hs[bgn_pair].pair = EdgeId(end);
+    hs[bgn].pair = crate::HalfEdgeId::from(end_pair);
+    hs[end_pair].pair = crate::HalfEdgeId::from(bgn);
+    hs[end].pair = crate::HalfEdgeId::from(bgn_pair);
+    hs[bgn_pair].pair = crate::HalfEdgeId::from(end);
 
     remove_if_folded(hs, ps, end);
 }
@@ -98,8 +98,8 @@ fn remove_if_folded<T: BoolReal>(hs: &mut [HalfEdge], ps: &mut [Vector3<T>], hid
         }
         _ => {} // topo valid
     }
-    pair_up(hs, hs[i1].pair.0, hs[j2].pair.0);
-    pair_up(hs, hs[i2].pair.0, hs[j1].pair.0);
+    pair_up(hs, usize::from(hs[i1].pair), usize::from(hs[j2].pair));
+    pair_up(hs, usize::from(hs[i2].pair), usize::from(hs[j1].pair));
     for i in [i0, i1, i2] {
         hs[i] = HalfEdge::default();
     }
@@ -116,7 +116,7 @@ fn split_pinched_vert<T: BoolReal>(hs: &mut [HalfEdge], ps: &mut Vec<Vector3<T>>
         if h_processed[hid] {
             continue;
         }
-        let mut vid = hs[hid].tail.0;
+        let mut vid = usize::from(hs[hid].tail);
         if vid == usize::MAX {
             continue;
         }
@@ -130,10 +130,10 @@ fn split_pinched_vert<T: BoolReal>(hs: &mut [HalfEdge], ps: &mut Vec<Vector3<T>>
         // loop halfedges around their tail ccw way
         let mut cur = hid;
         loop {
-            cur = next_of(hs[cur].pair.0);
+            cur = next_of(usize::from(hs[cur].pair));
             h_processed[cur] = true;
-            hs[cur].tail = EdgeId(vid);
-            hs[hs[cur].pair.0].head = EdgeId(vid);
+            hs[cur].tail = crate::VertexId::from(vid);
+            hs[usize::from(hs[cur].pair)].head = crate::VertexId::from(vid);
             if cur == hid {
                 break;
             }
@@ -149,9 +149,9 @@ fn update_vid_around_star(
 ) {
     let mut cur = bgn;
     while cur != end {
-        hs[cur].head = EdgeId(vid);
+        hs[cur].head = crate::VertexId::from(vid);
         cur = next_of(cur);
-        hs[cur].tail = EdgeId(vid);
+        hs[cur].tail = crate::VertexId::from(vid);
         cur = pair_of(hs, cur);
         assert_ne!(cur, bgn);
     }
@@ -163,8 +163,8 @@ fn collapse_triangle(hs: &mut [HalfEdge], hids: &(usize, usize, usize)) {
     }
     let pair1 = pair_of(hs, hids.1);
     let pair2 = pair_of(hs, hids.2);
-    hs[pair1].pair = EdgeId(pair2);
-    hs[pair2].pair = EdgeId(pair1);
+    hs[pair1].pair = crate::HalfEdgeId::from(pair2);
+    hs[pair2].pair = crate::HalfEdgeId::from(pair1);
     for i in [hids.0, hids.1, hids.2] {
         hs[i] = HalfEdge::default();
     }
