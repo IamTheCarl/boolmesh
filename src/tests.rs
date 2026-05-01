@@ -611,6 +611,7 @@ mod test_projection {
     fn test_projection_composed() {
         let a = generate_cube::<f64>().unwrap();
         let b = generate_cube::<f64>().unwrap();
+        let b = b.translate(2.0, 0.0, 0.0).unwrap();
         let meshes: Vec<Manifold<f64>> = vec![a, b];
         let composed = compose(&meshes).unwrap();
         let result = compute_projection(&composed);

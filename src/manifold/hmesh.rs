@@ -52,10 +52,13 @@ fn edge_topology<T: BoolReal>(
     }
     ett.sort();
 
-    let mut ne = 1;
-    for i in 0..ett.len() - 1 {
-        if !(ett[i][0] == ett[i + 1][0] && ett[i][1] == ett[i + 1][1]) {
+    let mut ne = 0;
+    let mut last_e = [usize::MAX, usize::MAX];
+    for entry in &ett {
+        let e = [entry[0], entry[1]];
+        if e != last_e {
             ne += 1;
+            last_e = e;
         }
     }
 
@@ -66,26 +69,33 @@ fn edge_topology<T: BoolReal>(
 
     let mut i = 0;
     while i < ett.len() {
-        if i == ett.len() - 1 || !((ett[i][0] == ett[i + 1][0]) && (ett[i][1] == ett[i + 1][1])) {
+        let [v1, v2, tri_id, edge_idx] = ett[i];
+        let mut j = i;
+        while j < ett.len() && ett[j][0] == v1 && ett[j][1] == v2 {
+            j += 1;
+        }
+        let count = j - i;
+        if count == 1 {
             // Border edge
-            let [v1, v2, i, j] = ett[i];
             e2v[ne][0] = v1;
             e2v[ne][1] = v2;
-            e2f[ne][0] = i;
-            f2e[i][j] = ne;
+            e2f[ne][0] = tri_id;
+            f2e[tri_id][edge_idx] = ne;
         } else {
+            // Shared edge — write f2e for every entry, use first pair as twin
+            e2v[ne][0] = v1;
+            e2v[ne][1] = v2;
+            for k in i..j {
+                let [_, _, fid, eidx] = ett[k];
+                f2e[fid][eidx] = ne;
+            }
             let r1 = ett[i];
-            let r2 = ett[i + 1];
-            e2v[ne][0] = r1[0];
-            e2v[ne][1] = r1[1];
+            let r2 = ett[j - 1];
             e2f[ne][0] = r1[2];
             e2f[ne][1] = r2[2];
-            f2e[r1[2]][r1[3]] = ne;
-            f2e[r2[2]][r2[3]] = ne;
-            i += 1; // skip the next one
+            i = j;
         }
         ne += 1;
-        i += 1;
     }
 
     for i in 0..e2f.len() {
@@ -116,7 +126,7 @@ impl<T: BoolReal> Hmesh<T> {
         let nv = pos.len();
         let nf = idx.len();
         let ne = e2v.len();
-        let nh = e2v.len() * 2;
+        let nh = nf * 3;
         let np = 3;
         let mut v2h = vec![usize::MAX; nv];
         let mut e2h = vec![usize::MAX; ne];
