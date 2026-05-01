@@ -57,3 +57,23 @@ required-features = ["bevy"]
 name = "primitives_demo"
 path = "examples/primitives_demo.rs"
 required-features = ["bevy"]
+
+[[example]]
+name = "slicing"
+path = "examples/slicing.rs"
+required-features = ["bevy"]
+
+[[example]]
+name = "projection"
+path = "examples/projection.rs"
+required-features = ["bevy"]
+
+[[example]]
+name = "extrusion"
+path = "examples/extrusion.rs"
+required-features = ["bevy"]
+
+[[example]]
+name = "revolution"
+path = "examples/revolution.rs"
+required-features = ["bevy"]
