@@ -7,6 +7,7 @@ pub mod hmesh;
 
 use super::hmesh::Hmesh;
 use crate::collider::{morton_code, MortonCollider, K_NO_CODE};
+use crate::manifold::bounds::Query;
 use crate::common::BoolReal;
 use crate::manifold::hmesh::HmeshError;
 use crate::{next_of, HalfEdge, HalfEdgeId};
@@ -22,19 +23,25 @@ use thiserror::Error;
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug)]
 pub struct Manifold<T: BoolReal = f64> {
-    pub ps: Vec<Vector3<T>>,           // positions
-    pub hs: Vec<HalfEdge>,             // halfedges
-    pub nv: usize,                     // number of vertices
-    pub nf: usize,                     // number of faces
-    pub nh: usize,                     // number of halfedges
-    pub eps: T,                        // epsilon
-    pub tol: T,                        // tolerance
-    pub bounding_box: BBox<T>,         //
-    pub face_normals: Vec<Vector3<T>>, //
-    pub vert_normals: Vec<Vector3<T>>, //
-    pub original_idx: Vec<usize>,      //
-    pub collider: MortonCollider<T>,   //
-    pub coplanar: Vec<i32>,            // indices of coplanar faces
+    pub(crate) positions: Vec<Vector3<T>>,
+    pub(crate) halfedges: Vec<HalfEdge>,
+    pub(crate) vertex_count: usize,
+    pub(crate) face_count: usize,
+    pub(crate) halfedge_count: usize,
+    pub(crate) spatial_tol: T,
+    pub(crate) snap_tol: T,
+    pub(crate) bounding_box: BBox<T>,
+    pub(crate) face_normals: Vec<Vector3<T>>,
+    pub(crate) vert_normals: Vec<Vector3<T>>,
+    pub(crate) original_idx: Vec<usize>,
+    pub(crate) collider: MortonCollider<T>,
+    pub(crate) coplanar: Vec<i32>,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct Triangle<T> {
+    pub positions: [Vector3<T>; 3],
+    pub normal: Vector3<T>,
 }
 
 impl<T: BoolReal> Manifold<T> {
@@ -71,10 +78,10 @@ impl<T: BoolReal> Manifold<T> {
             .filter(|&is| is.x != is.y && is.y != is.z && is.z != is.x)
             .collect::<Vec<_>>();
 
-        Self::new_impl(weld, idx, None, None)
+        Self::new_from_raw(weld, idx, None, None)
     }
 
-    pub fn new_impl(
+   pub(crate) fn new_from_raw(
         ps: Vec<Vector3<T>>,
         idx: Vec<Vector3<usize>>,
         eps: Option<T>,
@@ -97,17 +104,17 @@ impl<T: BoolReal> Manifold<T> {
         let coplanar = compute_coplanar_idx(&ps, &hm.fns, &hs, eps);
 
         let mfd = Manifold {
-            nv: hm.nv,
-            nf: hm.nf,
-            nh: hm.nh,
-            ps,
-            hs,
+            vertex_count: hm.nv,
+            face_count: hm.nf,
+            halfedge_count: hm.nh,
+            positions: ps,
+            halfedges: hs,
             bounding_box: bb,
             vert_normals: hm.vns,
             face_normals: hm.fns,
             original_idx: vec![],
-            eps,
-            tol,
+            spatial_tol: eps,
+            snap_tol: tol,
             collider,
             coplanar,
         };
@@ -119,7 +126,7 @@ impl<T: BoolReal> Manifold<T> {
     }
 
     pub fn get_indices(&self) -> Vec<Vector3<usize>> {
-        self.hs
+        self.halfedges
             .chunks(3)
             .map(|cs| Vector3::new(usize::from(cs[0].tail), usize::from(cs[1].tail), usize::from(cs[2].tail)))
             .collect()
@@ -134,12 +141,12 @@ impl<T: BoolReal> Manifold<T> {
         } else {
             e
         };
-        self.eps = e;
-        self.tol = self.tol.max(t);
+        self.spatial_tol = e;
+        self.snap_tol = self.snap_tol.max(t);
     }
 
     pub fn is_manifold(&self) -> bool {
-        self.hs.iter().enumerate().all(|(i, h)| {
+        self.halfedges.iter().enumerate().all(|(i, h)| {
             if h.tail().is_none() || h.head().is_none() {
                 return true;
             }
@@ -147,10 +154,9 @@ match h.pair() {
                 None => false,
                 Some(pair) => {
                     let mut good = true;
-                    good &= self.hs[pair as usize].pair() == Some(i as u32);
-                    good &= u32::from(h.tail) != u32::from(h.head);
-                    good &= u32::from(h.tail) == self.hs[pair as usize].head().unwrap();
-                    good &= u32::from(h.head) == self.hs[pair as usize].tail().unwrap();
+                   good &= self.halfedges[pair as usize].pair() == Some(i as u32);
+                    good &= u32::from(h.tail) == self.halfedges[pair as usize].head().unwrap();
+                    good &= u32::from(h.head) == self.halfedges[pair as usize].tail().unwrap();
                     good
                 }
             }
@@ -159,7 +165,7 @@ match h.pair() {
 
     pub fn transform(&self, transformation: Matrix4<T>) -> Result<Manifold<T>, ManifoldError> {
         let p = self
-            .ps
+            .positions
             .iter()
             .map(|p| {
                 transformation
@@ -167,53 +173,101 @@ match h.pair() {
                     .coords
             })
             .collect();
-        Manifold::new_impl(p, self.get_indices(), None, None)
+        Manifold::new_from_raw(p, self.get_indices(), None, None)
     }
 
     pub fn translate(&self, x: T, y: T, z: T) -> Result<Manifold<T>, ManifoldError> {
         let t = Vector3::new(x, y, z);
-        let p = self.ps.iter().map(|p| *p + t).collect();
-        Manifold::new_impl(p, self.get_indices(), None, None)
+        let p = self.positions.iter().map(|p| *p + t).collect();
+        Manifold::new_from_raw(p, self.get_indices(), None, None)
     }
 
     pub fn rotate(&self, x: T, y: T, z: T) -> Result<Manifold<T>, ManifoldError> {
         let r = Rotation3::from_euler_angles(x, y, z);
-        let p = self.ps.iter().map(|p| r.transform_vector(p)).collect();
-        Manifold::new_impl(p, self.get_indices(), None, None)
+        let p = self.positions.iter().map(|p| r.transform_vector(p)).collect();
+        Manifold::new_from_raw(p, self.get_indices(), None, None)
     }
 
     pub fn scale(&self, x: T, y: T, z: T) -> Result<Manifold<T>, ManifoldError> {
         let p = self
-            .ps
+            .positions
             .iter()
             .map(|p| Vector3::new(p.x * x, p.y * y, p.z * z))
             .collect();
-        Manifold::new_impl(p, self.get_indices(), None, None)
+        Manifold::new_from_raw(p, self.get_indices(), None, None)
     }
 
     #[inline]
-    pub fn pos_at(&self, vid: usize) -> Vector3<T> { self.ps[vid] }
+    pub fn pos_at(&self, vid: usize) -> Vector3<T> { self.positions[vid] }
 
     #[inline]
     pub fn face_vertex_ids(&self, fid: usize) -> [usize; 3] {
         [
-            usize::from(self.hs[3 * fid].tail),
-            usize::from(self.hs[3 * fid + 1].tail),
-            usize::from(self.hs[3 * fid + 2].tail),
+            usize::from(self.halfedges[3 * fid].tail),
+            usize::from(self.halfedges[3 * fid + 1].tail),
+            usize::from(self.halfedges[3 * fid + 2].tail),
         ]
     }
 
     #[inline]
     pub fn face_positions(&self, fid: usize) -> [Vector3<T>; 3] {
         [
-            self.ps[usize::from(self.hs[3 * fid].tail)],
-            self.ps[usize::from(self.hs[3 * fid + 1].tail)],
-            self.ps[usize::from(self.hs[3 * fid + 2].tail)],
+            self.positions[usize::from(self.halfedges[3 * fid].tail)],
+            self.positions[usize::from(self.halfedges[3 * fid + 1].tail)],
+            self.positions[usize::from(self.halfedges[3 * fid + 2].tail)],
         ]
     }
 
     #[inline]
-    pub fn halfedge_at(&self, hid: usize) -> &HalfEdge { &self.hs[hid] }
+    pub fn halfedge_at(&self, hid: usize) -> &HalfEdge { &self.halfedges[hid] }
+
+    pub fn triangles(&self) -> impl Iterator<Item = Triangle<T>> + '_ {
+        self.halfedges
+            .chunks(3)
+            .zip(self.face_normals.iter().cloned())
+            .map(|(h, n)| {
+                Triangle {
+                    positions: [
+                        self.positions[usize::from(h[0].tail)],
+                        self.positions[usize::from(h[1].tail)],
+                        self.positions[usize::from(h[2].tail)],
+                    ],
+                    normal: n,
+                }
+            })
+    }
+
+    #[inline]
+    pub fn vertex_count(&self) -> usize { self.vertex_count }
+
+    #[inline]
+    pub fn face_count(&self) -> usize { self.face_count }
+
+    #[inline]
+    pub fn halfedge_count(&self) -> usize { self.halfedge_count }
+
+    #[inline]
+    pub fn positions(&self) -> &[Vector3<T>] { &self.positions }
+
+    #[inline]
+    pub fn halfedges(&self) -> &[HalfEdge] { &self.halfedges }
+
+    pub fn cleanup(&mut self) {
+        cleanup_unused_verts_impl(&mut self.positions, &mut self.halfedges);
+        self.vertex_count = self.positions.len();
+        self.face_count = self.halfedges.len() / 3;
+        self.halfedge_count = self.halfedges.len();
+    }
+
+    pub fn project_xy(&self) -> Result<geo::MultiPolygon<T>, crate::ProjectionError>
+    where T: geo::bool_ops::BoolOpsNum {
+        compute_projection_impl(self)
+    }
+
+    pub fn slice(&self, height: T) -> Result<geo::MultiPolygon<T>, crate::SliceError>
+    where T: geo::bool_ops::BoolOpsNum {
+        compute_slice_impl(self, height)
+    }
 }
 
 #[derive(Debug, Error)]
@@ -351,7 +405,7 @@ fn compute_coplanar_idx<T: BoolReal>(
     res
 }
 
-pub fn cleanup_unused_verts<T: BoolReal>(ps: &mut Vec<Vector3<T>>, hs: &mut Vec<HalfEdge>) {
+pub(crate) fn cleanup_unused_verts_impl<T: BoolReal>(ps: &mut Vec<Vector3<T>>, hs: &mut Vec<HalfEdge>) {
     let bb = BBox::new(None, ps);
     let mt = ps.iter().map(|p| morton_code(p, &bb)).collect::<Vec<_>>();
 
@@ -381,4 +435,173 @@ pub fn cleanup_unused_verts<T: BoolReal>(ps: &mut Vec<Vector3<T>>, hs: &mut Vec<
 
     *ps = new2old.iter().map(|&i| ps[i]).collect();
     *hs = hs.iter().filter(|h| h.pair().is_some()).cloned().collect();
+}
+
+#[deprecated(since = "0.1.10", note = "Use `Manifold::cleanup()` instead")]
+pub fn cleanup_unused_verts<T: BoolReal>(ps: &mut Vec<Vector3<T>>, hs: &mut Vec<HalfEdge>) {
+    cleanup_unused_verts_impl(ps, hs);
+}
+
+pub fn compute_projection_impl<T: BoolReal + geo::bool_ops::BoolOpsNum>(manifold: &Manifold<T>) -> Result<geo::MultiPolygon<T>, crate::ProjectionError> {
+    let mut edge_ids: std::collections::BTreeMap<usize, std::collections::VecDeque<usize>> = std::collections::BTreeMap::new();
+
+    for (edge_id, edge) in manifold.halfedges.iter().enumerate() {
+        if edge_id > usize::from(edge.pair_id()) {
+            continue;
+        }
+
+        let pair_he = usize::from(edge.pair_id());
+        let face_a = edge_id / 3;
+        let face_b = HalfEdgeId::from(pair_he).face_id();
+        let na_z = manifold.face_normals[face_a].z;
+        let nb_z = manifold.face_normals[face_b].z;
+
+        let na_up = na_z.to_f64().is_finite() && na_z > T::zero();
+        let nb_up = nb_z.to_f64().is_finite() && nb_z > T::zero();
+
+        if na_up != nb_up {
+            if nb_up {
+                edge_ids.entry(usize::from(manifold.halfedges[pair_he].tail)).or_default().push_front(pair_he);
+            } else {
+                edge_ids.entry(usize::from(edge.tail)).or_default().push_front(edge_id);
+            }
+        }
+    }
+
+    let mut polygons: Vec<_> = Vec::new();
+
+    loop {
+        let first_edge_id = match edge_ids.first_key_value() {
+            Some((&first_key, queue)) => {
+                let value = queue.back().copied();
+                let q = edge_ids.get_mut(&first_key).unwrap();
+                q.pop_back();
+                if q.is_empty() {
+                    edge_ids.remove(&first_key);
+                }
+                value.unwrap()
+            }
+            None => break,
+        };
+        let mut current_edge_id = first_edge_id;
+        let first_vertex = usize::from(manifold.halfedges[first_edge_id].tail);
+        let first_point = manifold.positions[usize::from(manifold.halfedges[first_edge_id].head)];
+        let mut line_string = vec![geo::Coord { x: first_point.x, y: first_point.y }];
+
+        loop {
+            if usize::from(manifold.halfedges[current_edge_id].head) == first_vertex {
+                break;
+            }
+
+            let next_tail = usize::from(manifold.halfedges[current_edge_id].head);
+            if let Some(queue) = edge_ids.get_mut(&next_tail) {
+                if let Some(next_edge_id) = queue.pop_back() {
+                    if queue.is_empty() {
+                        edge_ids.remove(&next_tail);
+                    }
+                    current_edge_id = next_edge_id;
+                } else {
+                    break;
+                }
+            } else {
+                break;
+            }
+
+            let point = manifold.positions[usize::from(manifold.halfedges[current_edge_id].head)];
+            line_string.push(geo::Coord { x: point.x, y: point.y });
+        }
+
+        let mut line_string = geo::LineString(line_string);
+        line_string.close();
+        polygons.push(geo::Polygon::new(line_string, vec![]));
+    }
+
+    if polygons.is_empty() {
+        Err(crate::ProjectionError::NoPolygons)
+    } else {
+        let polygon = geo::unary_union(&polygons);
+        Ok(polygon)
+    }
+}
+
+pub fn compute_slice_impl<T: BoolReal + geo::bool_ops::BoolOpsNum>(manifold: &Manifold<T>, height: T) -> Result<geo::MultiPolygon<T>, crate::SliceError> {
+    let mut bounding_box = manifold.bounding_box.clone();
+    bounding_box.min.z = height;
+    bounding_box.max.z = height;
+    bounding_box.id = Some(0);
+
+    let mut triangle_ids = std::collections::BTreeSet::new();
+
+    manifold
+        .collider
+        .collision([Query::Bb(bounding_box)], &mut |_query_id, triangle_id| {
+            let z_points = [0, 1, 2]
+                .into_iter()
+                .map(|j| manifold.positions[usize::from(manifold.halfedges[3 * triangle_id + j].tail)].z);
+
+            let min = z_points
+                .clone()
+                .min_by(|a: &T, b: &T| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Greater));
+            let max = z_points.max_by(|a: &T, b: &T| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Less));
+
+            if let (Some(min), Some(max)) = (min, max) && min <= height && max > height {
+                triangle_ids.insert(triangle_id);
+            }
+        });
+
+    fn next3(j: usize) -> usize {
+        (j + 1) % 3
+    }
+
+    let mut polygons = Vec::new();
+
+    while !triangle_ids.is_empty() {
+        let start_triangle_id = *triangle_ids.first().ok_or(crate::SliceError::NoPolygons)?;
+
+        let mut vertex_index = 0;
+        for j in [0, 1, 2] {
+            if manifold.positions[usize::from(manifold.halfedges[3 * start_triangle_id + j].tail)].z > height &&
+                manifold.positions[usize::from(manifold.halfedges[3 * start_triangle_id + next3(j)].tail)].z <= height {
+                vertex_index = next3(j);
+                break;
+            }
+        }
+
+        let mut line_string = Vec::new();
+        let mut current_triangle_id = start_triangle_id;
+        loop {
+            triangle_ids.remove(&current_triangle_id);
+
+            if manifold.positions[usize::from(manifold.halfedges[3 * current_triangle_id + vertex_index].head)].z <= height {
+                vertex_index = next3(vertex_index);
+            }
+
+            let up = &manifold.halfedges[3 * current_triangle_id + vertex_index];
+            let below = manifold.positions[usize::from(up.tail)];
+            let above = manifold.positions[usize::from(up.head)];
+            let a = (height - below.z) / (above.z - below.z);
+            let point = below.lerp(&above, a);
+            line_string.push(geo::Coord { x: point.x, y: point.y });
+
+            let pair = usize::from(up.pair);
+            current_triangle_id = HalfEdgeId::from(pair).face_id();
+            vertex_index = next3(HalfEdgeId::from(pair).edge_index());
+
+            if current_triangle_id == start_triangle_id {
+                break;
+            }
+        }
+
+        let mut line_string = geo::LineString(line_string);
+        line_string.close();
+        polygons.push(geo::Polygon::new(line_string, vec![]));
+    }
+
+    let polygon = geo::unary_union(&polygons);
+
+    if polygons.is_empty() {
+        Err(crate::SliceError::NoPolygons)
+    } else {
+        Ok(polygon)
+    }
 }

@@ -43,5 +43,5 @@ pub fn generate_torus<T: BoolReal>(
         }
     }
 
-    Manifold::new_impl(ps, ts, None, None)
+    Manifold::new_from_raw(ps, ts, None, None)
 }

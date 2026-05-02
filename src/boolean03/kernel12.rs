@@ -94,25 +94,25 @@ pub fn intersect12<T: BoolReal>(
     let mb = if fwd { mq } else { mp };
 
     let k02 = Kernel02 {
-        ps_p: &ma.ps,
-        ps_q: &mb.ps,
-        hs_q: &mb.hs,
+        ps_p: &ma.positions,
+        ps_q: &mb.positions,
+        hs_q: &mb.halfedges,
         ns: &mp.vert_normals,
         expand,
         fwd,
     };
     let k11 = Kernel11 {
-        ps_p: &mp.ps,
-        ps_q: &mq.ps,
-        hs_p: &mp.hs,
-        hs_q: &mq.hs,
+        ps_p: &mp.positions,
+        ps_q: &mq.positions,
+        hs_p: &mp.halfedges,
+        hs_q: &mq.halfedges,
         ns: &mp.vert_normals,
         expand,
     };
     let k12 = Kernel12 {
-        ps_p: &ma.ps,
-        hs_p: &ma.hs,
-        hs_q: &mb.hs,
+        ps_p: &ma.positions,
+        hs_p: &ma.halfedges,
+        hs_q: &mb.halfedges,
         fwd,
         k02,
         k11,
@@ -127,11 +127,11 @@ pub fn intersect12<T: BoolReal>(
     //    }).collect::<Vec<Query>>();
     //#[cfg(not(feature = "rayon"))]
     let bbs = ma
-        .hs
+        .halfedges
         .iter()
         .enumerate()
         .filter(|(_, h)| h.is_forward())
-        .map(|(i, h)| Query::Bb(BBox::new(Some(i), &[ma.ps[usize::from(h.tail)], ma.ps[usize::from(h.head)]])));
+        .map(|(i, h)| Query::Bb(BBox::new(Some(i), &[ma.positions[usize::from(h.tail)], ma.positions[usize::from(h.head)]])));
 
     let mut x12_ = vec![];
     let mut v12_ = vec![];

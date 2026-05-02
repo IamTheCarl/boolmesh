@@ -24,15 +24,15 @@ pub fn compose<T: BoolReal>(ms: &Vec<Manifold<T>>) -> Result<Manifold<T>, Manifo
     let mut ts = vec![];
     let mut offset = 0;
     for m in ms {
-        for h in m.hs.iter() {
+        for h in m.halfedges.iter() {
             ts.push(usize::from(h.tail) + offset);
         }
-        for p in m.ps.iter() {
+        for p in m.positions.iter() {
             ps.push(p.x);
             ps.push(p.y);
             ps.push(p.z);
         }
-        offset += m.nv;
+        offset += m.vertex_count;
     }
     Manifold::new(&ps, &ts)
 }

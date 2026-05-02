@@ -63,21 +63,21 @@ fn size_output<T: BoolReal>(
     fns: &mut Vec<Vector3<T>>,
     inv: bool, // whether to invert mesh of q
 ) -> (Vec<i32>, Vec<i32>) {
-    let mut side_p = vec![0; mp.nf];
-    let mut side_q = vec![0; mq.nf];
+    let mut side_p = vec![0; mp.face_count];
+    let mut side_q = vec![0; mq.face_count];
 
     // equivalent to CountVerts
-    for (i, h) in mp.hs.iter().enumerate() {
+    for (i, h) in mp.halfedges.iter().enumerate() {
         side_p[face_of(i)] += i03[usize::from(h.tail)].abs();
     }
-    for (i, h) in mq.hs.iter().enumerate() {
+    for (i, h) in mq.halfedges.iter().enumerate() {
         side_q[face_of(i)] += i30[usize::from(h.tail)].abs();
     }
 
     // equivalent to CountNewVerts
     for i in 0..i12.len() {
         let hid0 = p1q2[i][0];
-        let hid1 = mp.hs[hid0].pair;
+        let hid1 = mp.halfedges[hid0].pair;
         let inc = i12[i].abs();
         side_p[face_of(hid0)] += inc;
         side_p[face_of(usize::from(hid1))] += inc;
@@ -86,7 +86,7 @@ fn size_output<T: BoolReal>(
 
     for i in 0..i21.len() {
         let hid0 = p2q1[i][1];
-        let hid1 = mq.hs[hid0].pair;
+        let hid1 = mq.halfedges[hid0].pair;
         let inc = i21[i].abs();
         side_q[face_of(hid0)] += inc;
         side_q[face_of(usize::from(hid1))] += inc;
@@ -94,7 +94,7 @@ fn size_output<T: BoolReal>(
     }
 
     // a map from face_p and face_q to face_r
-    let mut face_pq2r = vec![0; mp.nf + mq.nf + 1];
+    let mut face_pq2r = vec![0; mp.face_count + mq.face_count + 1];
     let side_pq = [&side_p[..], &side_q[..]].concat();
     let keep_fs = side_pq
         .iter()
@@ -103,7 +103,7 @@ fn size_output<T: BoolReal>(
 
     inclusive_scan(&keep_fs, &mut face_pq2r[1..], 0);
     let nf_r = *face_pq2r.last().unwrap() as usize;
-    face_pq2r.truncate(mp.nf + mq.nf);
+    face_pq2r.truncate(mp.face_count + mq.face_count);
     fns.resize(nf_r, Vector3::zeros());
 
     let mut fid_r = 0;
@@ -453,8 +453,8 @@ pub fn boolean45<T: BoolReal>(
     let i03: Vec<i32> = b03.w03.iter().map(|v| c1 + c3 * v).collect();
     let i30: Vec<i32> = b03.w30.iter().map(|v| c2 + c3 * v).collect();
     let mut nv = 0;
-    let mut vid_p2r = vec![0; mp.nv];
-    let mut vid_q2r = vec![0; mq.nv];
+    let mut vid_p2r = vec![0; mp.vertex_count];
+    let mut vid_q2r = vec![0; mq.vertex_count];
     let mut vid_12r = vec![0; b03.v12.len()];
     let mut vid_21r = vec![0; b03.v21.len()];
 
@@ -496,11 +496,11 @@ pub fn boolean45<T: BoolReal>(
 
     let mut ps_r = vec![Vector3::zeros(); nv as usize];
 
-    for i in 0..mp.nv {
-        duplicate_verts(&i03, &vid_p2r, &mp.ps, &mut ps_r, i);
+    for i in 0..mp.vertex_count {
+        duplicate_verts(&i03, &vid_p2r, &mp.positions, &mut ps_r, i);
     }
-    for i in 0..mq.nv {
-        duplicate_verts(&i30, &vid_q2r, &mq.ps, &mut ps_r, i);
+    for i in 0..mq.vertex_count {
+        duplicate_verts(&i30, &vid_q2r, &mq.positions, &mut ps_r, i);
     }
     for i in 0..nv_12 {
         duplicate_verts(&i12, &vid_12r, &b03.v12, &mut ps_r, i as usize);
@@ -512,11 +512,11 @@ pub fn boolean45<T: BoolReal>(
     let mut pt_p = FxHashMap::default();
     let mut pt_q = FxHashMap::default();
     let mut pt_new = FxHashMap::default();
-    add_new_edge_verts(
+      add_new_edge_verts(
         &b03.p1q2,
         &i12,
         &vid_12r,
-        &mp.hs,
+        &mp.halfedges,
         &mut pt_p,
         &mut pt_new,
         true,
@@ -526,7 +526,7 @@ pub fn boolean45<T: BoolReal>(
         &b03.p2q1,
         &i21,
         &vid_21r,
-        &mq.hs,
+        &mq.halfedges,
         &mut pt_q,
         &mut pt_new,
         false,
@@ -541,17 +541,17 @@ pub fn boolean45<T: BoolReal>(
 
     let nh = *hid_per_f.last().unwrap() as usize;
     let mut face_ptr_r = hid_per_f.clone();
-    let mut whole_flag_p = vec![true; mp.nh];
-    let mut whole_flag_q = vec![true; mq.nh];
+    let mut whole_flag_p = vec![true; mp.halfedge_count];
+    let mut whole_flag_q = vec![true; mq.halfedge_count];
     let mut rs_r = vec![Tref::default(); nh];
     let mut hs_r = vec![HalfEdge::default(); nh];
-    let fid_p2r = &fid_pq2r[0..mp.nf];
-    let fid_q2r = &fid_pq2r[mp.nf..];
+    let fid_p2r = &fid_pq2r[0..mp.face_count];
+    let fid_q2r = &fid_pq2r[mp.face_count..];
 
     append_partial_edges(
         &i03,
-        &mp.hs,
-        &mp.ps,
+        &mp.halfedges,
+        &mp.positions,
         &ps_r,
         &vid_p2r,
         fid_p2r,
@@ -564,8 +564,8 @@ pub fn boolean45<T: BoolReal>(
     );
     append_partial_edges(
         &i30,
-        &mq.hs,
-        &mq.ps,
+        &mq.halfedges,
+        &mq.positions,
         &ps_r,
         &vid_q2r,
         fid_q2r,
@@ -580,7 +580,7 @@ pub fn boolean45<T: BoolReal>(
     append_new_edges(
         &ps_r,
         &fid_pq2r,
-        mp.nf,
+        mp.face_count,
         &mut face_ptr_r,
         &mut pt_new,
         &mut hs_r,
@@ -589,7 +589,7 @@ pub fn boolean45<T: BoolReal>(
 
     append_whole_edges(
         &i03,
-        &mp.hs,
+        &mp.halfedges,
         fid_p2r,
         &vid_p2r,
         &whole_flag_p,
@@ -600,7 +600,7 @@ pub fn boolean45<T: BoolReal>(
     );
     append_whole_edges(
         &i30,
-        &mq.hs,
+        &mq.halfedges,
         fid_q2r,
         &vid_q2r,
         &whole_flag_q,

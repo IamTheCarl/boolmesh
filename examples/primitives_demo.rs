@@ -52,11 +52,9 @@ fn setup(
     );
     let mut pos = vec![];
     let mut vns = vec![];
-    for (fid, hs) in res.hs.chunks(3).enumerate() {
-        let p0 = res.ps[usize::from(hs[0].tail)];
-        let p1 = res.ps[usize::from(hs[1].tail)];
-        let p2 = res.ps[usize::from(hs[2].tail)];
-        let n = res.face_normals[fid];
+    for tri in res.triangles() {
+        let [p0, p1, p2] = tri.positions;
+        let n = tri.normal;
         pos.push([p0.x as f32, p0.y as f32, p0.z as f32]);
         pos.push([p1.x as f32, p1.y as f32, p1.z as f32]);
         pos.push([p2.x as f32, p2.y as f32, p2.z as f32]);

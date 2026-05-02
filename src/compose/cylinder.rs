@@ -59,7 +59,7 @@ pub fn generate_cylinder<T: BoolReal>(
         }
     }
 
-    let manifold = Manifold::new_impl(ps, ts, None, None)?;
+    let manifold = Manifold::new_from_raw(ps, ts, None, None)?;
 
     Ok(manifold)
 }

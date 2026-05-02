@@ -92,7 +92,7 @@ where
     //     oft_ts.push(Vector3::new(i, j, i + n));
     //     oft_ts.push(Vector3::new(i + n, j, j + n));
     // }
-    // Manifold::new_impl(oft_ps, oft_ts, None, None)
+    // Manifold::new_from_raw(oft_ps, oft_ts, None, None)
 
     fn points<T: BoolReal>(polygon: &Polygon<T>) -> impl Iterator<Item = Vector3<T>> {
         polygon
@@ -215,7 +215,7 @@ where
         }
     }
 
-    Manifold::new_impl(oft_ps, oft_ts, None, None)
+Manifold::new_from_raw(oft_ps, oft_ts, None, None)
 }
 
 #[derive(Debug, Error)]

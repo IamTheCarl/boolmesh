@@ -588,8 +588,8 @@ mod test_mesh_cleanup {
         ];
         let mfd = Manifold::new(&pos, &idx).unwrap();
 
-        assert_eq!(mfd.nv, 4);
-        assert_eq!(mfd.nf, 4);
+        assert_eq!(mfd.vertex_count, 4);
+        assert_eq!(mfd.face_count, 4);
     }
 }
 

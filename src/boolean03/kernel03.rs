@@ -17,18 +17,18 @@ pub fn winding03<T: BoolReal>(
     let ma = if fwd { mp } else { mq };
     let mb = if fwd { mq } else { mp };
 
-    let mut w03 = vec![0; ma.nv];
+    let mut w03 = vec![0; ma.vertex_count];
     let k02 = Kernel02 {
-        ps_p: &ma.ps,
-        ps_q: &mb.ps,
-        hs_q: &mb.hs,
+        ps_p: &ma.positions,
+        ps_q: &mb.positions,
+        hs_q: &mb.halfedges,
         ns: &mp.vert_normals,
         expand,
         fwd,
     };
 
     mb.collider.collision(
-        ma.ps.iter().enumerate().map(|(i, p)| {
+        ma.positions.iter().enumerate().map(|(i, p)| {
             Query::Pt(BPos {
                 id: Some(i),
                 pos: Vector2::new(p.x, p.y),

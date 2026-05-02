@@ -31,5 +31,5 @@ pub fn generate_cone<T: BoolReal>(
 
     ps.push(apex);
     ps.push(center);
-    Manifold::new_impl(ps, ts, None, None)
+    Manifold::new_from_raw(ps, ts, None, None)
 }

@@ -50,7 +50,7 @@ pub fn generate_uv_sphere<T: BoolReal>(
         }
     }
 
-    let manifold = Manifold::new_impl(ps, ts, None, None)?;
+    let manifold = Manifold::new_from_raw(ps, ts, None, None)?;
 
     Ok(manifold)
 }
@@ -134,7 +134,7 @@ pub fn generate_icosphere<T: BoolReal>(subdivisions: u32) -> Result<Manifold<T>,
         ts = ts_;
     }
 
-    Manifold::new_impl(ps, ts, None, None)
+    Manifold::new_from_raw(ps, ts, None, None)
 }
 
 #[derive(Debug, Error)]
