@@ -11,7 +11,14 @@ pub enum Query<T: BoolReal> {
     Pt(BPos<T>),
 }
 
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize, serde::Deserialize),
+    serde(bound(
+        serialize = "T: serde::Serialize",
+        deserialize = "T: serde::de::DeserializeOwned"
+    ))
+)]
 #[derive(Clone, Debug)]
 pub struct BBox<T: BoolReal> {
     pub id: Option<usize>,

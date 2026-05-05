@@ -1,7 +1,7 @@
 //--- Copyright (C) 2025 Saki Komikado <komietty@gmail.com>,
 //--- This Source Code Form is subject to the terms of the Mozilla Public License v.2.0.
 
-use fxhash::FxHashMap;
+use indexmap::IndexMap;
 use nalgebra::Vector3;
 use thiserror::Error;
 
@@ -96,12 +96,12 @@ pub fn generate_icosphere<T: BoolReal>(subdivisions: u32) -> Result<Manifold<T>,
         Vector3::new(9, 8, 1),
     ];
 
-    let mut cache = FxHashMap::default();
+    let mut cache = IndexMap::new();
 
     let get_midpoint = |vid1: usize,
                         vid2: usize,
                         verts: &mut Vec<Vector3<T>>,
-                        cache: &mut FxHashMap<(usize, usize), usize>| {
+                        cache: &mut IndexMap<(usize, usize), usize>| {
         let e = if vid1 < vid2 {
             (vid1, vid2)
         } else {

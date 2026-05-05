@@ -126,7 +126,14 @@ fn build_internal_boxes<T: BoolReal>(
     }
 }
 
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize, serde::Deserialize),
+    serde(bound(
+        serialize = "T: serde::Serialize",
+        deserialize = "T: serde::de::DeserializeOwned"
+    ))
+)]
 #[derive(Clone, Debug)]
 pub struct MortonCollider<T: BoolReal> {
     pub node_bb: Vec<BBox<T>>,

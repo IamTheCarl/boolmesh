@@ -20,7 +20,14 @@ use std::cmp::Ordering;
 use std::collections::HashMap;
 use thiserror::Error;
 
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize, serde::Deserialize),
+    serde(bound(
+        serialize = "T: serde::Serialize",
+        deserialize = "T: serde::de::DeserializeOwned"
+    ))
+)]
 #[derive(Clone, Debug)]
 pub struct Manifold<T: BoolReal = f64> {
     pub(crate) positions: Vec<Vector3<T>>,
@@ -251,6 +258,122 @@ match h.pair() {
 
     #[inline]
     pub fn halfedges(&self) -> &[HalfEdge] { &self.halfedges }
+
+    /// Compare two manifolds for geometric equality within an epsilon tolerance.
+    ///
+    /// Compares geometry semantically — positions, faces (by vertex set), and normals
+    /// are matched regardless of array indexing order.
+    /// Skips derived fields (bounding_box, tolerances, collider, coplanar, original_idx).
+    pub fn approx_eq(&self, other: &Self, eps: T) -> bool {
+        if self.vertex_count != other.vertex_count
+            || self.face_count != other.face_count
+            || self.halfedge_count != other.halfedge_count
+        {
+            return false;
+        }
+
+        if self.positions.len() != other.positions.len()
+            || self.face_normals.len() != other.face_normals.len()
+            || self.vert_normals.len() != other.vert_normals.len()
+        {
+            return false;
+        }
+
+        let n = self.positions.len();
+        let nf = self.face_normals.len();
+
+        // Sort position indices by coordinate tuple to build canonical mapping.
+        let mut self_idx: Vec<usize> = (0..n).collect();
+        self_idx.sort_by(|&a, &b| {
+            let pa = &self.positions[a];
+            let pb = &self.positions[b];
+            pa.x.partial_cmp(&pb.x)
+                .unwrap_or(Ordering::Equal)
+                .then_with(|| pa.y.partial_cmp(&pb.y).unwrap_or(Ordering::Equal))
+                .then_with(|| pa.z.partial_cmp(&pb.z).unwrap_or(Ordering::Equal))
+        });
+
+        let mut other_idx: Vec<usize> = (0..n).collect();
+        other_idx.sort_by(|&a, &b| {
+            let pa = &other.positions[a];
+            let pb = &other.positions[b];
+            pa.x.partial_cmp(&pb.x)
+                .unwrap_or(Ordering::Equal)
+                .then_with(|| pa.y.partial_cmp(&pb.y).unwrap_or(Ordering::Equal))
+                .then_with(|| pa.z.partial_cmp(&pb.z).unwrap_or(Ordering::Equal))
+        });
+
+        // Verify positions match after sorting and build mapping.
+        let mut map = vec![0usize; n];
+        for i in 0..n {
+            let a = &self.positions[self_idx[i]];
+            let b = &other.positions[other_idx[i]];
+            if (a.x - b.x).abs() > eps
+                || (a.y - b.y).abs() > eps
+                || (a.z - b.z).abs() > eps
+            {
+                return false;
+            }
+            map[self_idx[i]] = other_idx[i];
+        }
+
+        // Collect faces as sorted vertex triplets with their normals for canonical comparison.
+        let mut self_faces: Vec<([usize; 3], Vector3<T>)> = Vec::with_capacity(nf);
+        let mut other_faces: Vec<([usize; 3], Vector3<T>)> = Vec::with_capacity(nf);
+
+        for fid in 0..nf {
+            let mut si = [
+                map[usize::from(self.halfedges[3 * fid].tail)],
+                map[usize::from(self.halfedges[3 * fid + 1].tail)],
+                map[usize::from(self.halfedges[3 * fid + 2].tail)],
+            ];
+            si.sort();
+            self_faces.push((si, self.face_normals[fid]));
+
+            let mut oi = [
+                map[usize::from(other.halfedges[3 * fid].tail)],
+                map[usize::from(other.halfedges[3 * fid + 1].tail)],
+                map[usize::from(other.halfedges[3 * fid + 2].tail)],
+            ];
+            oi.sort();
+            other_faces.push((oi, other.face_normals[fid]));
+        }
+
+        self_faces.sort_by(|a, b| a.0.cmp(&b.0));
+        other_faces.sort_by(|a, b| a.0.cmp(&b.0));
+
+        for i in 0..nf {
+            if self_faces[i].0 != other_faces[i].0 {
+                return false;
+            }
+        }
+
+        // Compare face normals at the canonical face positions.
+        for i in 0..nf {
+            let n1 = &self_faces[i].1;
+            let n2 = &other_faces[i].1;
+            if (n1.x - n2.x).abs() > eps
+                || (n1.y - n2.y).abs() > eps
+                || (n1.z - n2.z).abs() > eps
+            {
+                return false;
+            }
+        }
+
+        // Compare vertex normals using the position-based mapping.
+        for i in 0..n {
+            let a = &self.vert_normals[self_idx[i]];
+            let b = &other.vert_normals[other_idx[i]];
+            if (a.x - b.x).abs() > eps
+                || (a.y - b.y).abs() > eps
+                || (a.z - b.z).abs() > eps
+            {
+                return false;
+            }
+        }
+
+        true
+    }
 
     pub fn cleanup(&mut self) {
         cleanup_unused_verts_impl(&mut self.positions, &mut self.halfedges);

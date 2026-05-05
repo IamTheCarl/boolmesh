@@ -1,7 +1,7 @@
 //--- Copyright (C) 2025 Saki Komikado <komietty@gmail.com>,
 //--- This Source Code Form is subject to the terms of the Mozilla Public License v.2.0.
 
-use fxhash::FxHashMap;
+use indexmap::IndexMap;
 use nalgebra::Vector3;
 
 use crate::boolean03::Boolean03;
@@ -147,8 +147,8 @@ fn add_new_edge_verts<T: BoolReal>(
     i12: &[i32],
     v12_r: &[i32],
     hs_p: &[HalfEdge],
-    pt_old: &mut FxHashMap<usize, Vec<EdgePt<T>>>,
-    pt_new: &mut FxHashMap<(usize, usize), Vec<EdgePt<T>>>,
+    pt_old: &mut IndexMap<usize, Vec<EdgePt<T>>>,
+    pt_new: &mut IndexMap<(usize, usize), Vec<EdgePt<T>>>,
     fwd: bool,
     oft: usize,
 ) {
@@ -250,7 +250,7 @@ fn append_partial_edges<T: BoolReal>(
     fwd: bool,                                   //
     hs_r: &mut [HalfEdge],                       // halfedge data of mfd_r, empty yet
     rs_r: &mut [Tref],                           // map from halfedge in mfd_r to triangle info
-    pt_p: &mut FxHashMap<usize, Vec<EdgePt<T>>>, //
+    pt_p: &mut IndexMap<usize, Vec<EdgePt<T>>>, //
     face_ptr_r: &mut [i32],                      //
     whole_flag: &mut [bool], // a flag to find out a halfedge from mfd_p is entirely usable in mfd_r
 ) {
@@ -328,7 +328,7 @@ fn append_new_edges<T: BoolReal>(
     fid_pq2r: &[i32],       //
     nf_p: usize,            // num of faces in mfd_p
     face_ptr_r: &mut [i32], //
-    pt_new: &mut FxHashMap<(usize, usize), Vec<EdgePt<T>>>, //
+    pt_new: &mut IndexMap<(usize, usize), Vec<EdgePt<T>>>, //
     hs_r: &mut [HalfEdge],  // the halfedge data of mfd_r, empty yet
     rs_r: &mut [Tref],      //
 ) {
@@ -509,9 +509,9 @@ pub fn boolean45<T: BoolReal>(
         duplicate_verts(&i21, &vid_21r, &b03.v21, &mut ps_r, i as usize);
     }
 
-    let mut pt_p = FxHashMap::default();
-    let mut pt_q = FxHashMap::default();
-    let mut pt_new = FxHashMap::default();
+    let mut pt_p = IndexMap::new();
+    let mut pt_q = IndexMap::new();
+    let mut pt_new = IndexMap::new();
       add_new_edge_verts(
         &b03.p1q2,
         &i12,
