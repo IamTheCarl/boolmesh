@@ -16,17 +16,18 @@ use nalgebra::Vector3;
 use std::f64::consts::PI;
 
 /// Canonicalize a MultiPolygon by removing duplicate closing points and starting
-/// each ring at the lexicographically smallest coordinate.
+/// each ring at the lexicographically smallest coordinate. Exterior rings are
+/// forced CCW, interior rings CW, to guarantee consistent vertex ordering.
 fn canonicalize_polygon(poly: &MultiPolygon<f64>) -> MultiPolygon<f64> {
     let polygons: Vec<_> = poly.0.iter().map(|p| {
-        let ext = canonicalize_ring(p.exterior());
-        let ints: Vec<_> = p.interiors().iter().map(|r| canonicalize_ring(r)).collect();
+        let ext = force_ccw_ring(p.exterior());
+        let ints: Vec<_> = p.interiors().iter().map(|r| force_cw_ring(r)).collect();
         Polygon::new(ext, ints)
     }).collect();
     MultiPolygon(polygons)
 }
 
-fn canonicalize_ring(ring: &LineString<f64>) -> LineString<f64> {
+  fn canonicalize_ring(ring: &LineString<f64>) -> LineString<f64> {
     let coords: Vec<_> = ring.coords().map(|c| Coord { x: c.x, y: c.y }).collect();
     let mut unique = coords;
     if unique.len() >= 2 && unique[0].x == unique[unique.len()-1].x && unique[0].y == unique[unique.len()-1].y {
@@ -43,6 +44,45 @@ fn canonicalize_ring(ring: &LineString<f64>) -> LineString<f64> {
     unique.push(unique[0]);
     LineString::from(unique)
 }
+
+/// Force ring direction to counter-clockwise (CCW).
+/// Exterior rings should be CCW, interiors CW — we force all exterior rings CCW
+/// to guarantee consistent vertex ordering regardless of geo crate non-determinism.
+fn force_ccw_ring(ring: &LineString<f64>) -> LineString<f64> {
+    let mut r = canonicalize_ring(ring);
+    // Calculate signed area (shoelace formula) - positive = CCW, negative = CW
+    let coords: Vec<_> = r.coords().map(|c| Coord { x: c.x, y: c.y }).collect();
+    let area: f64 = coords.iter().zip(coords.iter().skip(1).chain(coords.iter().take(1)))
+        .fold(0.0f64, |acc, (a, b)| acc + a.x * b.y - a.y * b.x);
+    if area < 0.0 {
+        // Reverse the ring to make it CCW
+        let mut reversed = coords;
+        reversed.reverse();
+        // Add closing point
+        reversed.push(reversed[0]);
+        r = LineString::from(reversed);
+    }
+    r
+}
+
+/// Force ring direction to clockwise (CW).
+fn force_cw_ring(ring: &LineString<f64>) -> LineString<f64> {
+    let mut r = canonicalize_ring(ring);
+    // Calculate signed area (shoelace formula) - positive = CCW, negative = CW
+    let coords: Vec<_> = r.coords().map(|c| Coord { x: c.x, y: c.y }).collect();
+    let area: f64 = coords.iter().zip(coords.iter().skip(1).chain(coords.iter().take(1)))
+        .fold(0.0f64, |acc, (a, b)| acc + a.x * b.y - a.y * b.x);
+    if area > 0.0 {
+        // Reverse the ring to make it CW
+        let mut reversed = coords;
+        reversed.reverse();
+        // Add closing point
+        reversed.push(reversed[0]);
+        r = LineString::from(reversed);
+    }
+    r
+}
+
 
 fn main() {
     let fixture_dir = Path::new("tests/fixtures");

@@ -66,13 +66,13 @@ mod helpers {
     }
 
     /// Canonicalize a MultiPolygon by removing duplicate closing points and starting
-    /// each ring at the lexicographically smallest coordinate. This ensures consistent
-    /// triangulation regardless of geo crate internal ordering.
+    /// each ring at the lexicographically smallest coordinate. Exterior rings are
+    /// forced CCW, interior rings CW, to guarantee consistent vertex ordering.
     fn canonicalize_polygon(poly: &MultiPolygon<f64>) -> MultiPolygon<f64> {
         use geo::LineString;
         let polygons: Vec<_> = poly.0.iter().map(|p| {
-            let ext = canonicalize_ring(p.exterior());
-            let ints: Vec<_> = p.interiors().iter().map(|r| canonicalize_ring(r)).collect();
+            let ext = force_ccw_ring(p.exterior());
+            let ints: Vec<_> = p.interiors().iter().map(|r| force_cw_ring(r)).collect();
             Polygon::new(ext, ints)
         }).collect();
         MultiPolygon(polygons)
@@ -97,6 +97,44 @@ mod helpers {
         // Add closing point
         unique.push(unique[0]);
         LineString::from(unique)
+    }
+
+    /// Force ring direction to counter-clockwise (CCW).
+    /// Exterior rings should be CCW, interiors CW — we force all exterior rings CCW
+    /// to guarantee consistent vertex ordering regardless of geo crate non-determinism.
+    fn force_ccw_ring(ring: &LineString<f64>) -> LineString<f64> {
+        let mut r = canonicalize_ring(ring);
+        // Calculate signed area (shoelace formula) - positive = CCW, negative = CW
+        let coords: Vec<_> = r.coords().map(|c| Coord { x: c.x, y: c.y }).collect();
+        let area: f64 = coords.iter().zip(coords.iter().skip(1).chain(coords.iter().take(1)))
+            .fold(0.0f64, |acc, (a, b)| acc + a.x * b.y - a.y * b.x);
+        if area < 0.0 {
+            // Reverse the ring to make it CCW
+            let mut reversed = coords;
+            reversed.reverse();
+            // Add closing point
+            reversed.push(reversed[0]);
+            r = LineString::from(reversed);
+        }
+        r
+    }
+
+    /// Force ring direction to clockwise (CW).
+    fn force_cw_ring(ring: &LineString<f64>) -> LineString<f64> {
+        let mut r = canonicalize_ring(ring);
+        // Calculate signed area (shoelace formula) - positive = CCW, negative = CW
+        let coords: Vec<_> = r.coords().map(|c| Coord { x: c.x, y: c.y }).collect();
+        let area: f64 = coords.iter().zip(coords.iter().skip(1).chain(coords.iter().take(1)))
+            .fold(0.0f64, |acc, (a, b)| acc + a.x * b.y - a.y * b.x);
+        if area > 0.0 {
+            // Reverse the ring to make it CW
+            let mut reversed = coords;
+            reversed.reverse();
+            // Add closing point
+            reversed.push(reversed[0]);
+            r = LineString::from(reversed);
+        }
+        r
     }
 
     /// Compare two MultiPolygon results with epsilon tolerance for coords.
@@ -326,11 +364,7 @@ fn test_extrude_hollow_square() {
     assert!(actual.approx_eq(&expected, 1e-10), "extrude_hollow_square mismatch");
 }
 
-// Skipped: geo::boolean_op non-determinism causes different halfedge ordering
-// across processes (fixture gen vs test runner), leading to different face normals.
-// The geometry (positions) is identical, but face normals differ due to winding order.
 #[test]
-#[ignore]
 fn test_extrude_twisted() {
     let bytes = include_bytes!("fixtures/extrude_twisted.bincode");
     let expected: Manifold<f64> = bincode::deserialize(bytes).unwrap();
@@ -358,11 +392,7 @@ fn test_revolve_full() {
     assert!(actual.approx_eq(&expected, 1e-10), "revolve_square mismatch");
 }
 
-// Skipped: geo::boolean_op non-determinism causes different halfedge ordering
-// across processes (fixture gen vs test runner), leading to different face normals.
-// The geometry (positions) is identical, but face normals differ due to winding order.
 #[test]
-#[ignore]
 fn test_revolve_half() {
     let bytes = include_bytes!("fixtures/revolve_half.bincode");
     let expected: Manifold<f64> = bincode::deserialize(bytes).unwrap();
