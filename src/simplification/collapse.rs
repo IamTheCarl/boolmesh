@@ -21,12 +21,12 @@ fn record_if_collinear(hs: &[HalfEdge], rs: &[Tref], hid: usize, nv: usize) -> b
 
     let bgn = hid;
     let mut cur = cw_next(bgn);
-    let r0 = &rs[bgn / 3];
-    let mut r1 = &rs[cur / 3];
+    let r0 = rs[bgn / 3];
+    let mut r1 = rs[cur / 3];
     let mut same = is_coplanar(r0, r1);
     while cur != bgn {
         cur = cw_next(cur);
-        let r2 = &rs[cur / 3];
+        let r2 = rs[cur / 3];
         if !is_coplanar(r2, r0) && !is_coplanar(r2, r1) {
             if same {
                 r1 = r2;
@@ -81,18 +81,18 @@ pub fn collapse_edge<T: BoolReal>(
     // check validity by orbiting start vert ccw order
     if (pos_keep - pos_delt).norm_squared() >= eps.powi(2) {
         let mut cur = bgn;
-        let mut tr0 = &rs[usize::from(to_rmv.pair) / 3];
+        let mut tr0 = rs[usize::from(to_rmv.pair) / 3];
         let mut p_prev = ps[head_of(hs, t1.1)];
         while cur != usize::from(to_rmv.pair) {
             cur = next_of(cur); // incoming half around delt vert
             let p_next = ps[head_of(hs, cur)];
-            let r_curr = &rs[cur / 3];
+            let r_curr = rs[cur / 3];
             let n_curr = &ns[cur / 3];
             let n_pair = &ns[usize::from(to_rmv.pair) / 3];
             let ccw = |p0, p1, p2| is_ccw_3d(p0, p1, p2, n_curr, eps);
             if !is_coplanar(r_curr, tr0) {
                 let tr2 = tr0;
-                tr0 = &rs[hid / 3];
+                tr0 = rs[hid / 3];
                 if !is_coplanar(r_curr, tr0) {
                     return false;
                 }
@@ -202,6 +202,6 @@ pub fn collapse_short_edges<T: BoolReal>(
 }
 
 #[inline]
-fn is_coplanar(t0: &Tref, t1: &Tref) -> bool {
+fn is_coplanar(t0: Tref, t1: Tref) -> bool {
     t0.mid == t1.mid && t0.pid == t1.pid
 }

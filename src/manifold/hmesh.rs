@@ -8,6 +8,7 @@ use rayon::prelude::*;
 use thiserror::Error;
 
 use crate::common::{BoolReal, VectorExt as _};
+use fxhash::FxHashMap;
 
 /// Hmesh preserves the order of pos and idx in any cases.
 /// Edges are ordered so as the edge is forward (tail idx < head idx)
@@ -38,64 +39,44 @@ fn edge_topology<T: BoolReal>(
         return Err(HmeshError::EmptyIndexMatrix);
     }
 
-    let mut ett: Vec<[usize; 4]> = vec![];
+     let mut edge_map: FxHashMap<(usize, usize), Vec<(usize, usize)>> = FxHashMap::default();
 
-    for (i, idx_) in idx.iter().enumerate() {
+    for (tri_id, idx_) in idx.iter().enumerate() {
         for j in 0..3 {
             let mut v1 = idx_[j];
             let mut v2 = idx_[(j + 1) % 3];
             if v1 > v2 {
                 std::mem::swap(&mut v1, &mut v2);
             }
-            ett.push([v1, v2, i, j]);
-        }
-    }
-    ett.sort();
-
-    let mut ne = 0;
-    let mut last_e = [usize::MAX, usize::MAX];
-    for entry in &ett {
-        let e = [entry[0], entry[1]];
-        if e != last_e {
-            ne += 1;
-            last_e = e;
+            edge_map.entry((v1, v2)).or_default().push((tri_id, j));
         }
     }
 
+    let mut edge_keys: Vec<_> = edge_map.keys().copied().collect();
+    edge_keys.sort();
+
+    let ne = edge_keys.len();
     e2v.resize(ne, Vector2::from_element(usize::MAX));
     e2f.resize(ne, Vector2::from_element(usize::MAX));
     f2e.resize(idx.len(), Vector3::from_element(usize::MAX));
-    ne = 0;
 
-    let mut i = 0;
-    while i < ett.len() {
-        let [v1, v2, tri_id, edge_idx] = ett[i];
-        let mut j = i;
-        while j < ett.len() && ett[j][0] == v1 && ett[j][1] == v2 {
-            j += 1;
-        }
-        let count = j - i;
-        if count == 1 {
+    for (ne_idx, &(v1, v2)) in edge_keys.iter().enumerate() {
+        let mut entries = edge_map.remove(&(v1, v2)).unwrap();
+        entries.sort();
+
+        if entries.len() == 1 {
             // Border edge
-            e2v[ne][0] = v1;
-            e2v[ne][1] = v2;
-            e2f[ne][0] = tri_id;
-            f2e[tri_id][edge_idx] = ne;
+            e2v[ne_idx] = Vector2::new(v1, v2);
+            e2f[ne_idx] = Vector2::new(entries[0].0, usize::MAX);
+            f2e[entries[0].0][entries[0].1] = ne_idx;
         } else {
             // Shared edge — write f2e for every entry, use first pair as twin
-            e2v[ne][0] = v1;
-            e2v[ne][1] = v2;
-            for k in i..j {
-                let [_, _, fid, eidx] = ett[k];
-                f2e[fid][eidx] = ne;
+            e2v[ne_idx] = Vector2::new(v1, v2);
+            for &(tri_id, edge_idx) in &entries {
+                f2e[tri_id][edge_idx] = ne_idx;
             }
-            let r1 = ett[i];
-            let r2 = ett[j - 1];
-            e2f[ne][0] = r1[2];
-            e2f[ne][1] = r2[2];
-            i = j;
+            e2f[ne_idx] = Vector2::new(entries[0].0, entries[entries.len() - 1].0);
         }
-        ne += 1;
     }
 
     for i in 0..e2f.len() {

@@ -27,6 +27,9 @@ num-traits = "0.2"
 fxhash = "0.2.1"
 indexmap = "2"
 
+[dev-dependencies]
+bincode = "1"
+
 [features]
 default = []
 verbose = []
@@ -37,7 +40,6 @@ bevy = [
     "dep:tobj",
     "dep:bevy",
     "dep:bevy_panorbit_camera",
-    "dep:geo-bevy",
     "nalgebra/glam029"
 ]
 
@@ -68,19 +70,19 @@ required-features = ["bevy"]
 [[example]]
 name = "slicing"
 path = "examples/slicing.rs"
-required-features = ["bevy"]
+required-features = ["bevy", "geo-bevy"]
 
 [[example]]
 name = "projection"
 path = "examples/projection.rs"
-required-features = ["bevy"]
+required-features = ["bevy", "geo-bevy"]
 
 [[example]]
 name = "extrusion"
 path = "examples/extrusion.rs"
-required-features = ["bevy"]
+required-features = ["bevy", "geo-bevy"]
 
 [[example]]
 name = "revolution"
 path = "examples/revolution.rs"
-required-features = ["bevy"]
+required-features = ["bevy", "geo-bevy"]

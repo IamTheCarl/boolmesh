@@ -37,17 +37,15 @@ where
     T: BoolReal,
     F: FnMut(&Pt<T>),
 {
-    for p in pts.iter() {
-        if rect.contains(&p.pos) {
-            func(p);
+    if pts.len() <= 8 {
+        for p in pts.iter() {
+            if rect.contains(&p.pos) {
+                func(p);
+            }
         }
+    } else {
+        query_two_d_tree(pts, rect.clone(), func);
     }
-
-    //if pts.len() <= 8 {
-    //    for p in pts.iter() { if rect.contains(&p.pos) { func(p);} }
-    //} else {
-    //    query_two_d_tree(pts, rect.clone(), func);
-    //}
 }
 
 pub fn query_two_d_tree<F, T>(pts: &[Pt<T>], r: Rect<T>, mut f: F)

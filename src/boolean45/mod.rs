@@ -95,7 +95,9 @@ fn size_output<T: BoolReal>(
 
     // a map from face_p and face_q to face_r
     let mut face_pq2r = vec![0; mp.face_count + mq.face_count + 1];
-    let side_pq = [&side_p[..], &side_q[..]].concat();
+    let mut side_pq = Vec::with_capacity(side_p.len() + side_q.len());
+    side_pq.extend_from_slice(&side_p);
+    side_pq.extend_from_slice(&side_q);
     let keep_fs = side_pq
         .iter()
         .map(|&x| if x > 0 { 1 } else { 0 })
@@ -509,9 +511,9 @@ pub fn boolean45<T: BoolReal>(
         duplicate_verts(&i21, &vid_21r, &b03.v21, &mut ps_r, i as usize);
     }
 
-    let mut pt_p = IndexMap::new();
-    let mut pt_q = IndexMap::new();
-    let mut pt_new = IndexMap::new();
+    let mut pt_p = IndexMap::with_capacity_and_hasher(b03.p1q2.len() * 2, Default::default());
+    let mut pt_q = IndexMap::with_capacity_and_hasher(b03.p2q1.len() * 2, Default::default());
+    let mut pt_new = IndexMap::with_capacity_and_hasher(b03.p1q2.len() * 2, Default::default());
       add_new_edge_verts(
         &b03.p1q2,
         &i12,

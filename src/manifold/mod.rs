@@ -65,16 +65,19 @@ impl<T: BoolReal> Manifold<T> {
         let mut weld = Vec::with_capacity(pos.len() / 3);
         let mut rmap = vec![0; pos.len()];
 
-        for (i, p) in pos.chunks(3).enumerate() {
+      for (i, p) in pos.chunks(3).enumerate() {
             let v = Vector3::new(p[0], p[1], p[2]);
             let k = (v.x.to_bits(), v.y.to_bits(), v.z.to_bits());
-            if let Some(&w) = hash.get(&k) {
-                rmap[i] = w;
-            } else {
-                let n = weld.len();
-                weld.push(v);
-                hash.insert(k, n);
-                rmap[i] = n;
+            match hash.entry(k) {
+                std::collections::hash_map::Entry::Occupied(e) => {
+                    rmap[i] = *e.get();
+                }
+                std::collections::hash_map::Entry::Vacant(e) => {
+                    let n = weld.len();
+                    weld.push(v);
+                    e.insert(n);
+                    rmap[i] = n;
+                }
             }
         }
 
@@ -490,10 +493,8 @@ fn compute_coplanar_idx<T: BoolReal>(
         priority.push((area, t));
     }
 
-    priority.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(Ordering::Equal));
-
     let mut interior = vec![];
-    for (_, t) in priority.iter() {
+    for (_area, t) in priority.iter() {
         if res[*t] != -1 {
             continue;
         }
