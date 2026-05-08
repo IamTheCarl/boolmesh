@@ -33,24 +33,25 @@ pub fn triangulate<T: BoolReal>(
 ) -> Result<Triangulation<T>, TriangulationError> {
     #[cfg(feature = "rayon")]
     {
-        let (mut ts, mut rs, ns) = (0..b45.hid_per_f.len() - 1)
+        let indexed: Vec<_> = (0..b45.hid_per_f.len() - 1)
             .into_par_iter()
             .map(|fid| {
                 let hid = b45.hid_per_f[fid] as usize;
                 let ts_ = process_face(&b45, fid, eps);
                 let rs_ = vec![b45.rs[hid].clone(); ts_.len()];
                 let ns_ = vec![b45.ns[fid].clone(); ts_.len()];
-                (ts_, rs_, ns_)
+                (fid, ts_, rs_, ns_)
             })
-            .reduce(
-                || (vec![], vec![], vec![]),
-                |mut acc, (mut ts_, mut rs_, mut ns_)| {
-                    acc.0.append(&mut ts_);
-                    acc.1.append(&mut rs_);
-                    acc.2.append(&mut ns_);
-                    acc
-                },
-            );
+            .collect();
+        
+        let mut ts = Vec::with_capacity(indexed.len() * 2);
+        let mut rs = vec![];
+        let mut ns = vec![];
+        for (_, ts_, rs_, ns_) in indexed {
+            ts.extend(ts_);
+            rs.extend(rs_);
+            ns.extend(ns_);
+        }
         update_reference(mp, mq, &mut rs);
         Ok(Triangulation {
             hs: tri_halfs_multi(&mut ts),

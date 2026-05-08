@@ -459,7 +459,7 @@ fn sort_faces<T: BoolReal>(
     face_morton: &mut Vec<u32>,
 ) -> Result<Hmesh<T>, ManifoldError> {
     let mut map = (0..face_morton.len()).collect::<Vec<_>>();
-    map.sort_by_key(|&i| face_morton[i]);
+    map.sort_by(|&a, &b| face_morton[a].cmp(&face_morton[b]).then_with(|| a.cmp(&b)));
     *face_bboxes = map
         .iter()
         .map(|&i| face_bboxes[i].clone())

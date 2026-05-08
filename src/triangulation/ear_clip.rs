@@ -313,16 +313,17 @@ impl<T: BoolReal> PartialOrd for EvPtrMinCost<T> {
 }
 impl<T: BoolReal> Ord for EvPtrMinCost<T> {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.0
-            .borrow()
-            .cost
-            .partial_cmp(&other.0.borrow().cost)
+        let (cost1, idx1) = {
+            let a = self.0.borrow();
+            (a.cost, a.idx)
+        };
+        let (cost2, idx2) = {
+            let b = other.0.borrow();
+            (b.cost, b.idx)
+        };
+        cost1.partial_cmp(&cost2)
             .unwrap_or(Ordering::Equal)
-            .then_with(|| {
-                let ptr1 = Rc::as_ptr(&self.0) as usize;
-                let ptr2 = Rc::as_ptr(&other.0) as usize;
-                ptr1.cmp(&ptr2)
-            })
+            .then_with(|| idx1.cmp(&idx2))
     }
 }
 
@@ -339,18 +340,17 @@ impl<T: BoolReal> PartialOrd for EvPtrMaxPosX<T> {
 }
 impl<T: BoolReal> Ord for EvPtrMaxPosX<T> {
     fn cmp(&self, other: &Self) -> Ordering {
-        other
-            .0
-            .borrow()
-            .pos
-            .x
-            .partial_cmp(&self.0.borrow().pos.x)
+        let (x1, idx1) = {
+            let a = self.0.borrow();
+            (a.pos.x, a.idx)
+        };
+        let (x2, idx2) = {
+            let b = other.0.borrow();
+            (b.pos.x, b.idx)
+        };
+        x2.partial_cmp(&x1)
             .unwrap_or(Ordering::Equal)
-            .then_with(|| {
-                let ptr1 = Rc::as_ptr(&self.0) as usize;
-                let ptr2 = Rc::as_ptr(&other.0) as usize;
-                ptr1.cmp(&ptr2)
-            })
+            .then_with(|| idx1.cmp(&idx2))
     }
 }
 

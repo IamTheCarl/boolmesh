@@ -108,7 +108,7 @@ pub fn tri_halfs_multi(ts: &[Vector3<usize>]) -> Vec<HalfEdge> {
             }
         });
 
-    is.par_sort_by_key(|&i| ky[i]);
+    is.par_sort_by(|&i, &j| ky[i].cmp(&ky[j]).then_with(|| i.cmp(&j)));
 
     let mut ini = 0;
     for i in 0..ne {
