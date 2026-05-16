@@ -166,7 +166,7 @@ impl<T: BoolReal> Hmesh<T> {
             let p0 = pos[tail[prev[ih]]];
             let x = p2 - p1;
             let t = (p1 - p0) * -T::one();
-            *n = x.cross(&t).normalize();
+            *n = x.cross(&t).normalize_or_zero();
         });
 
         #[cfg(not(feature = "rayon"))]
@@ -177,7 +177,7 @@ impl<T: BoolReal> Hmesh<T> {
             let p0 = pos[tail[prev[ih]]];
             let x = p2 - p1;
             let t = (p1 - p0) * -T::one();
-            fns[i] = x.cross(&t).normalize();
+            fns[i] = x.cross(&t).normalize_or_zero();
         }
 
         for i in 0..nf {

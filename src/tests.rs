@@ -597,6 +597,8 @@ mod test_mesh_cleanup {
 mod test_projection {
     use crate::compute_projection;
     use crate::prelude::{compose, generate_cube, Manifold};
+    use crate::compose::extrusion::ExtrudePoly;
+    use geo::{Coord, Translate};
 
     #[test]
     fn test_projection_cube() {
@@ -618,5 +620,23 @@ mod test_projection {
         assert!(result.is_ok());
         let polygon = result.unwrap();
         assert!(!polygon.0.is_empty());
+    }
+
+  /// Test that projecting a revolved shape produces valid output.
+    #[test]
+    fn project_revolved_trace() {
+        let square = geo::Rect::new(Coord { x: -0.5, y: -0.5 }, Coord { x: 0.5, y: 0.5 });
+        let mut square_offset = square.clone();
+        square_offset.translate_mut(1.0, 0.0);
+        let polygon = square_offset.to_polygon();
+
+        let revolved = polygon
+            .revolve(5, std::f64::consts::PI * 2.0 / 5.0)
+            .expect("revolve should succeed");
+
+        let result = compute_projection(&revolved);
+        assert!(result.is_ok(), "revolve projection should succeed");
+        let polygons = result.unwrap();
+        assert!(!polygons.0.is_empty(), "projection should produce at least one polygon");
     }
 }

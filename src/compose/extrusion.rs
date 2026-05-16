@@ -1,4 +1,4 @@
-use geo::{BoundingRect, Coord, LineString, MultiPolygon, Polygon};
+use geo::{BoundingRect, Coord, MultiPolygon, Polygon};
 use nalgebra::{Matrix4, Vector2, Vector3};
 use thiserror::Error;
 
@@ -10,23 +10,18 @@ use crate::{
 };
 
 trait IterStrings<T: BoolReal> {
-    fn strings(&self) -> impl Iterator<Item = &LineString<T>>;
-    fn coords(&self) -> impl Iterator<Item = &Coord<T>>;
-    fn num_coords(&self) -> usize;
+    fn num_unique_coords(&self) -> usize;
 }
 
 impl<T: BoolReal> IterStrings<T> for Polygon<T> {
-    fn strings(&self) -> impl Iterator<Item = &LineString<T>> {
-        [self.exterior()].into_iter().chain(self.interiors())
-    }
-
-    fn coords(&self) -> impl Iterator<Item = &Coord<T>> {
-        self.strings().flat_map(|string| string.coords())
-    }
-
-    fn num_coords(&self) -> usize {
-        // TODO instead of counting each coor individually, sum up the length of all the strings.
-        self.coords().count()
+    fn num_unique_coords(&self) -> usize {
+        let coords: Vec<_> = self.exterior().coords().collect();
+        let n = coords.len();
+        if n > 1 && coords.first() == coords.last() {
+            n - 1
+        } else {
+            n
+        }
     }
 }
 
@@ -94,10 +89,15 @@ where
     // }
     // Manifold::new_from_raw(oft_ps, oft_ts, None, None)
 
-    fn points<T: BoolReal>(polygon: &Polygon<T>) -> impl Iterator<Item = Vector3<T>> {
-        polygon
-            .coords()
-            .map(|coord| Vector3::new(coord.x, coord.y, T::zero()))
+    fn points<T: BoolReal>(polygon: &Polygon<T>) -> Vec<Vector3<T>> {
+        let coords = polygon.exterior().coords().collect::<Vec<_>>();
+        let n = coords.len();
+        let coords = if n > 1 && coords.first() == coords.last() {
+            &coords[..n - 1]
+        } else {
+            &coords[..]
+        };
+        coords.iter().map(|coord| Vector3::new(coord.x, coord.y, T::zero())).collect()
     }
 
     let face_indicies = if matches!(face_mode, FaceMode::Close) {
@@ -108,8 +108,15 @@ where
         let polygons: Vec<Vec<Pt<T>>> = polygon_iter_builder()
             .into_iter()
             .map(|polygon| {
-                polygon
-                    .coords()
+                let coords = polygon.exterior().coords().collect::<Vec<_>>();
+                let n = coords.len();
+                let coords = if n > 1 && coords.first() == coords.last() {
+                    &coords[..n - 1]
+                } else {
+                    &coords[..]
+                };
+                coords
+                    .iter()
                     .map(|c| {
                         let pt = Pt {
                             pos: Vector2::new(c.x, c.y),
@@ -132,8 +139,18 @@ where
     let mut oft_ts = vec![];
     let points_per_division: usize = polygon_iter_builder()
         .into_iter()
-        .map(|polygon| polygon.num_coords())
+        .map(|polygon| polygon.num_unique_coords())
         .sum();
+
+    // For full revolution (Loop), generate divisions-1 layers to avoid computing
+    // transform(1.0) which produces cos(2π) and sin(2π) with floating-point error.
+    // The last layer at alpha=(divisions-1)/divisions is close enough to 2π and
+    // won't be deduplicated with the bottom layer.
+    let loop_layers = if matches!(face_mode, FaceMode::Loop) {
+        divisions.saturating_sub(1)
+    } else {
+        divisions
+    };
 
     // Insert bottom verticies.
     for p in polygon_iter_builder().into_iter().flat_map(points) {
@@ -147,8 +164,8 @@ where
         }
     }
 
-    // Incert divisions. Note that the top of the shape counts as a division.
-    for layer in 0..divisions {
+    // Insert divisions. Note that the top of the shape counts as a division.
+    for layer in 0..loop_layers {
         let alpha = T::cast_from_usize(layer + 1) / T::cast_from_usize(divisions);
         let transform = transform(alpha);
 
@@ -156,8 +173,8 @@ where
         let mut polygon_point_offset = 0;
         for polygon in polygon_iter_builder() {
             let base_offset = layer * points_per_division + polygon_point_offset;
-            let points_in_polygon = polygon.num_coords();
-            for (vertex_index, position) in points(polygon).enumerate() {
+            let points_in_polygon = polygon.num_unique_coords();
+            for (vertex_index, position) in points(polygon).into_iter().enumerate() {
                 // Conversion is necessary for 32bit support.
                 #[allow(clippy::useless_conversion)]
                 oft_ps.push(transform.transform_point(&position.into()).coords.into());
@@ -185,19 +202,19 @@ where
         // the divisions loop.
         for i in face_indicies.iter() {
             oft_ts.push(Vector3::new(
-                i.x + points_per_division * divisions,
-                i.y + points_per_division * divisions,
-                i.z + points_per_division * divisions,
+                i.x + points_per_division * loop_layers,
+                i.y + points_per_division * loop_layers,
+                i.z + points_per_division * loop_layers,
             ));
         }
-    } else {
+     } else {
         // Loop the final layer back to the first layer.
         let mut polygon_point_offset = 0;
         for polygon in polygon_iter_builder() {
-            let ending_offset = points_per_division * divisions + polygon_point_offset;
+            let ending_offset = points_per_division * loop_layers + polygon_point_offset;
             let starting_offset = polygon_point_offset;
-            let points_in_polygon = polygon.num_coords();
-            for (vertex_index, _position) in points(polygon).enumerate() {
+            let points_in_polygon = polygon.num_unique_coords();
+            for (vertex_index, _position) in points(polygon).into_iter().enumerate() {
                 // Corners of a quardrangle making up a a side of the extruded shape.
                 // k--l
                 // |  |
