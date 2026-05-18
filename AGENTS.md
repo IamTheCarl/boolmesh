@@ -3,11 +3,14 @@
 ## Commands
 ```
 cargo build                             # dev build
-cargo test                              # run tests (lib only)
-cargo test --all-features               # full test suite (includes serde)
+cargo test                              # run tests (lib only) — 8 tests pass
+cargo test --all-features               # full suite — integration tests in test_examples.rs fail (21 pass, 15 fail)
+cargo run --bin generate_fixtures --features serde  # regenerate test fixtures
 cargo build --example <name> --features bevy   # build a bevy example
 cargo run --release --example <name> --features bevy  # run a bevy example
 ```
+
+Note: The `--all-features` integration tests fail due to non-deterministic ordering in `geo::unary_union` results. This is a known issue — the fixture comparisons fail because polygon vertex order varies between runs.
 
 ## Architecture (one-pass boolean)
 ```
@@ -62,7 +65,8 @@ All fields are `pub(crate)`. External access only via methods:
 | `cleanup_unused_verts()` | `Manifold::cleanup()` |
 | `compute_projection()` | `Manifold::project_xy()` |
 | `compute_slice()` | `Manifold::slice(height)` |
-| `Manifold::new_impl()` | `Manifold::new_from_raw()` (pub(crate)) |
+
+`Manifold::new_impl()` does not exist. `Manifold::new()` internally calls `Manifold::new_from_raw()` after dedup vertices and removes collapsed triangles.
 
 ## VertexId / HalfEdgeId — critical pattern
 `HalfEdge.tail`, `.head` are `VertexId`, `.pair` is `HalfEdgeId`. **Not raw `usize`**.
@@ -91,9 +95,17 @@ for tri in manifold.triangles() {
 
 Do **not** manually index `positions` and `face_normals` by face_id.
 
+## BoolReal — precision constants
+`BoolReal` gates f32 vs f64. `K_PRECISION` differs per impl:
+| T | K_PRECISION | Use case |
+|---|---|---|
+| f64 | 1e-12 | Default, production geometry |
+| f32 | 1e-4 | Lower-precision / performance-sensitive |
+
+The tolerance used in `Manifold::new_from_raw` is `T::K_PRECISION * bounding_box.scale()`. Changing the precision without adjusting tolerance expectations will cause false intersections or missed collisions.
+
 ## Constraints
 - Input meshes **must be manifold** (no boundaries, no overlapping geometry)
-- `BoolReal` trait gates f32 vs f64 precision
 - `Hmesh` uses raw `usize` — conversion at `Manifold::new_from_raw` boundary
 - `HalfEdgeId::INVALID_REMOVED` is `u32::MAX - 1`
 
