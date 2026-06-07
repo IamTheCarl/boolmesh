@@ -1,4 +1,4 @@
-use geo::{BoundingRect, Coord, MultiPolygon, Polygon};
+use geo::{BoundingRect, MultiPolygon, Polygon};
 use nalgebra::{Matrix4, Vector2, Vector3};
 use thiserror::Error;
 
@@ -6,7 +6,7 @@ use crate::{
     common::BoolReal,
     manifold::ManifoldError,
     prelude::Manifold,
-    triangulation::{ear_clip::EarClip, Pt},
+    triangulation::{Pt, ear_clip::EarClip},
 };
 
 trait IterStrings<T: BoolReal> {
@@ -97,7 +97,10 @@ where
         } else {
             &coords[..]
         };
-        coords.iter().map(|coord| Vector3::new(coord.x, coord.y, T::zero())).collect()
+        coords
+            .iter()
+            .map(|coord| Vector3::new(coord.x, coord.y, T::zero()))
+            .collect()
     }
 
     let face_indicies = if matches!(face_mode, FaceMode::Close) {
@@ -207,7 +210,7 @@ where
                 i.z + points_per_division * loop_layers,
             ));
         }
-     } else {
+    } else {
         // Loop the final layer back to the first layer.
         let mut polygon_point_offset = 0;
         for polygon in polygon_iter_builder() {
@@ -232,7 +235,7 @@ where
         }
     }
 
-Manifold::new_from_raw(oft_ps, oft_ts, None, None)
+    Manifold::new_from_raw(oft_ps, oft_ts, None, None)
 }
 
 #[derive(Debug, Error)]

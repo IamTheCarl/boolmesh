@@ -4,7 +4,7 @@
 use nalgebra::Vector3;
 
 use super::kernel01::{interpolate, shadows, shadows01};
-use crate::{common::BoolReal, HalfEdge};
+use crate::{HalfEdge, common::BoolReal};
 
 pub struct Kernel02<'a, T> {
     pub ps_p: &'a [Vector3<T>],
@@ -35,7 +35,11 @@ impl<'a, T: BoolReal> Kernel02<'a, T> {
         for i in 0..3 {
             let q1 = 3 * q2 + i;
             let half = self.hs_q[q1].clone();
-            let q1_f = if half.is_forward() { q1 } else { usize::from(half.pair) };
+            let q1_f = if half.is_forward() {
+                q1
+            } else {
+                usize::from(half.pair)
+            };
 
             if !fwd {
                 let q_vert = usize::from(self.hs_q[q1_f].tail);

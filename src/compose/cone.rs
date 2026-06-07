@@ -5,7 +5,7 @@ use nalgebra::Vector3;
 
 use crate::common::BoolReal;
 use crate::manifold::ManifoldError;
-use crate::{compute_orthogonal, Manifold};
+use crate::{Manifold, compute_orthogonal};
 
 pub fn generate_cone<T: BoolReal>(
     apex: Vector3<T>,

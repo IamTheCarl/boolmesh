@@ -1,11 +1,12 @@
 //--- Copyright (C) 2025 Saki Komikado <komietty@gmail.com>,
 //--- This Source Code Form is subject to the terms of the Mozilla Public License v.2.0.
 
-use crate::{next_of, HalfEdge, HalfEdgeId};
+use crate::{HalfEdge, HalfEdgeId, next_of};
 use nalgebra::Vector3;
 #[cfg(feature = "rayon")]
 use rayon::prelude::*;
 
+#[allow(dead_code)]
 pub fn tri_halfs_single(ts: &[Vector3<usize>]) -> Vec<HalfEdge> {
     let nh = ts.len() * 3;
     let ne = nh / 2;
@@ -177,7 +178,9 @@ fn step(is: &mut [usize], hs: &mut [HalfEdge], i: usize, consecutive_ini: usize)
         let i1 = is[k];
         let h1 = hs[i1].clone();
 
-        if !(usize::from(h0.tail) == usize::from(h1.head) && usize::from(h0.head) == usize::from(h1.tail)) {
+        if !(usize::from(h0.tail) == usize::from(h1.head)
+            && usize::from(h0.head) == usize::from(h1.tail))
+        {
             break;
         }
         if usize::from(hs[next_of(i0)].head) == usize::from(hs[next_of(i1)].head) {
@@ -197,7 +200,8 @@ fn step(is: &mut [usize], hs: &mut [HalfEdge], i: usize, consecutive_ini: usize)
     }
     let i2 = is[i + 1];
     let h2 = hs[i2].clone();
-    if usize::from(h0.tail) == usize::from(h2.tail) && usize::from(h0.head) == usize::from(h2.head) {
+    if usize::from(h0.tail) == usize::from(h2.tail) && usize::from(h0.head) == usize::from(h2.head)
+    {
         consecutive_ini
     } else {
         i + 1

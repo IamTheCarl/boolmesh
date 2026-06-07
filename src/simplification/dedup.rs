@@ -5,7 +5,7 @@ use indexmap::IndexMap;
 use nalgebra::Vector3;
 
 use super::{pair_up, tail_of, update_vid_around_star};
-use crate::{common::BoolReal, next_of, HalfEdge, Tref};
+use crate::{HalfEdge, Tref, common::BoolReal, next_of};
 
 fn dedupe_edge<T: BoolReal>(
     ps: &mut Vec<Vector3<T>>,
@@ -27,7 +27,7 @@ fn dedupe_edge<T: BoolReal>(
         if tail_of(hs, cur) == tail {
             ps.push(ps[head]);
             let copy = ps.len() - 1;
-      cur = usize::from(hs[next_of(cur)].pair);
+            cur = usize::from(hs[next_of(cur)].pair);
             update_vid_around_star(hs, cur, opp, copy);
 
             let nh = hs.len();

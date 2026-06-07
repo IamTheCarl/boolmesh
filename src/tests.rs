@@ -5,11 +5,11 @@
 mod test_intersection {
     use nalgebra::Vector3;
 
+    use crate::OpType;
+    use crate::boolean03::Boolean03;
     use crate::boolean03::kernel03::winding03;
     use crate::boolean03::kernel12::intersect12;
-    use crate::boolean03::Boolean03;
     use crate::boolean45::boolean45;
-    use crate::OpType;
 
     type Manifold = crate::Manifold<f64>;
 
@@ -79,7 +79,7 @@ mod test_intersection {
             v12,
             v21,
         };
-        let b45 = boolean45(&mfd_p, &mfd_q, &b03, &op);
+        let _b45 = boolean45(&mfd_p, &mfd_q, &b03, &op);
     }
 
     #[test]
@@ -127,7 +127,7 @@ mod test_intersection {
             v12,
             v21,
         };
-        let b45 = boolean45(&mfd_p, &mfd_q, &b03, &op);
+        let _b45 = boolean45(&mfd_p, &mfd_q, &b03, &op);
     }
 }
 
@@ -135,8 +135,8 @@ mod test_intersection {
 mod test_triangulation {
     use nalgebra::{Vector2, Vector3};
 
-    use crate::triangulation::ear_clip::EarClip;
     use crate::triangulation::Pt;
+    use crate::triangulation::ear_clip::EarClip;
 
     #[test]
     fn test_ear_clip() {
@@ -595,15 +595,14 @@ mod test_mesh_cleanup {
 
 #[cfg(test)]
 mod test_projection {
-    use crate::compute_projection;
-    use crate::prelude::{compose, generate_cube, Manifold};
     use crate::compose::extrusion::ExtrudePoly;
+    use crate::prelude::{compose, generate_cube};
     use geo::{Coord, Translate};
 
     #[test]
     fn test_projection_cube() {
         let cube = generate_cube::<f64>().unwrap();
-        let result = compute_projection(&cube);
+        let result = cube.project_xy();
         assert!(result.is_ok());
         let polygon = result.unwrap();
         assert!(!polygon.0.is_empty());
@@ -614,15 +613,15 @@ mod test_projection {
         let a = generate_cube::<f64>().unwrap();
         let b = generate_cube::<f64>().unwrap();
         let b = b.translate(2.0, 0.0, 0.0).unwrap();
-        let meshes: Vec<Manifold<f64>> = vec![a, b];
+        let meshes: Vec<_> = vec![a, b];
         let composed = compose(&meshes).unwrap();
-        let result = compute_projection(&composed);
+        let result = composed.project_xy();
         assert!(result.is_ok());
         let polygon = result.unwrap();
         assert!(!polygon.0.is_empty());
     }
 
-  /// Test that projecting a revolved shape produces valid output.
+    /// Test that projecting a revolved shape produces valid output.
     #[test]
     fn project_revolved_trace() {
         let square = geo::Rect::new(Coord { x: -0.5, y: -0.5 }, Coord { x: 0.5, y: 0.5 });
@@ -634,9 +633,12 @@ mod test_projection {
             .revolve(5, std::f64::consts::PI * 2.0 / 5.0)
             .expect("revolve should succeed");
 
-        let result = compute_projection(&revolved);
+        let result = revolved.project_xy();
         assert!(result.is_ok(), "revolve projection should succeed");
         let polygons = result.unwrap();
-        assert!(!polygons.0.is_empty(), "projection should produce at least one polygon");
+        assert!(
+            !polygons.0.is_empty(),
+            "projection should produce at least one polygon"
+        );
     }
 }

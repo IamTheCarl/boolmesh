@@ -4,7 +4,7 @@
 pub mod collapse;
 pub mod dedup;
 pub mod re_swap;
-use crate::{common::BoolReal, next_of, HalfEdge, Tref};
+use crate::{HalfEdge, Tref, common::BoolReal, next_of};
 use collapse::{collapse_collinear_edges, collapse_edge, collapse_short_edges};
 use dedup::dedupe_edges;
 use nalgebra::{Vector2, Vector3};

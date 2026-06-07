@@ -40,6 +40,7 @@ pub struct Manifold<T: BoolReal = f64> {
     pub(crate) bounding_box: BBox<T>,
     pub(crate) face_normals: Vec<Vector3<T>>,
     pub(crate) vert_normals: Vec<Vector3<T>>,
+    #[allow(dead_code)]
     pub(crate) original_idx: Vec<usize>,
     pub(crate) collider: MortonCollider<T>,
     pub(crate) coplanar: Vec<i32>,
@@ -582,6 +583,7 @@ pub(crate) fn cleanup_unused_verts_impl<T: BoolReal>(
 }
 
 #[deprecated(since = "0.1.10", note = "Use `Manifold::cleanup()` instead")]
+#[allow(dead_code)]
 pub fn cleanup_unused_verts<T: BoolReal>(ps: &mut Vec<Vector3<T>>, hs: &mut Vec<HalfEdge>) {
     cleanup_unused_verts_impl(ps, hs);
 }

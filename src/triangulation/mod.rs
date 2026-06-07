@@ -12,7 +12,7 @@ use crate::triangulation::ear_clip::EarClip;
 use crate::triangulation::tri_halfs::tri_halfs_multi;
 #[cfg(not(feature = "rayon"))]
 use crate::triangulation::tri_halfs::tri_halfs_single;
-use crate::{compute_aa_proj, get_aa_proj_matrix, is_ccw_3d, HalfEdge, Manifold, Tref};
+use crate::{HalfEdge, Manifold, Tref, compute_aa_proj, get_aa_proj_matrix, is_ccw_3d};
 use nalgebra::{Vector2, Vector3};
 #[cfg(feature = "rayon")]
 use rayon::prelude::*;
@@ -37,13 +37,13 @@ pub fn triangulate<T: BoolReal>(
             .into_par_iter()
             .map(|fid| {
                 let hid = b45.hid_per_f[fid] as usize;
-                let ts_ = process_face(&b45, fid, eps);
-                let rs_ = vec![b45.rs[hid].clone(); ts_.len()];
-                let ns_ = vec![b45.ns[fid].clone(); ts_.len()];
+                let ts_ = process_face(b45, fid, eps);
+                let rs_ = vec![b45.rs[hid]; ts_.len()];
+                let ns_ = vec![b45.ns[fid]; ts_.len()];
                 (fid, ts_, rs_, ns_)
             })
             .collect();
-        
+
         let mut ts = Vec::with_capacity(indexed.len() * 2);
         let mut rs = vec![];
         let mut ns = vec![];
@@ -54,7 +54,7 @@ pub fn triangulate<T: BoolReal>(
         }
         update_reference(mp, mq, &mut rs);
         Ok(Triangulation {
-            hs: tri_halfs_multi(&mut ts),
+            hs: tri_halfs_multi(&ts),
             ns,
             rs,
         })
@@ -184,7 +184,13 @@ fn square_triangulate<T: BoolReal>(b45: &Boolean45<T>, fid: usize, eps: T) -> Ve
 
     tris[choice]
         .iter()
-        .map(|t| Vector3::new(usize::from(b45.hs[t.x].tail), usize::from(b45.hs[t.y].tail), usize::from(b45.hs[t.z].tail)))
+        .map(|t| {
+            Vector3::new(
+                usize::from(b45.hs[t.x].tail),
+                usize::from(b45.hs[t.y].tail),
+                usize::from(b45.hs[t.z].tail),
+            )
+        })
         .collect()
 }
 
@@ -207,7 +213,13 @@ fn general_triangulate<T: BoolReal>(b45: &Boolean45<T>, fid: usize, eps: T) -> V
     EarClip::new(&polys, eps)
         .triangulate()
         .iter()
-        .map(|t| Vector3::new(usize::from(b45.hs[t.x].tail), usize::from(b45.hs[t.y].tail), usize::from(b45.hs[t.z].tail)))
+        .map(|t| {
+            Vector3::new(
+                usize::from(b45.hs[t.x].tail),
+                usize::from(b45.hs[t.y].tail),
+                usize::from(b45.hs[t.z].tail),
+            )
+        })
         .collect()
 }
 

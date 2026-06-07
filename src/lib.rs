@@ -14,37 +14,41 @@ mod simplification;
 mod tests;
 mod triangulation;
 
-use geo::bool_ops::BoolOpsNum;
 use geo::MultiPolygon;
+use geo::bool_ops::BoolOpsNum;
 use nalgebra::Vector3;
 use thiserror::Error;
 
 use crate::boolean03::boolean03;
 use crate::boolean45::boolean45;
 use crate::common::*;
+use crate::manifold::cleanup_unused_verts_impl;
 use crate::manifold::*;
 use crate::simplification::simplify_topology;
-use crate::manifold::cleanup_unused_verts_impl;
-use crate::triangulation::triangulate;
 use crate::triangulation::TriangulationError;
+use crate::triangulation::triangulate;
 
 pub use crate::common::BoolReal;
-pub use crate::common::{VertexId, HalfEdgeId};
+pub use crate::common::{HalfEdgeId, VertexId};
 
 pub mod prelude {
     pub use crate::common::OpType;
-    pub use crate::common::{VertexId, HalfEdgeId};
+    pub use crate::common::{HalfEdgeId, VertexId};
     pub use crate::compose::{
-        compose, fractal, generate_cone, generate_cube, generate_cylinder,
-        generate_icosphere, generate_torus, generate_uv_sphere, ExtrudePoly, ExtrusionError,
+        ExtrudePoly, ExtrusionError, compose, fractal, generate_cone, generate_cube,
+        generate_cylinder, generate_icosphere, generate_torus, generate_uv_sphere,
     };
     pub use crate::compute_boolean;
     pub use crate::manifold::{Manifold, Triangle};
 
-    pub use nalgebra::{self, Vector3, Vector2};
+    pub use nalgebra::{self, Vector2, Vector3};
 }
 
-pub fn compute_boolean<T: BoolReal>(mp: &Manifold<T>, mq: &Manifold<T>, op: OpType) -> Result<Manifold<T>, BooleanError> {
+pub fn compute_boolean<T: BoolReal>(
+    mp: &Manifold<T>,
+    mq: &Manifold<T>,
+    op: OpType,
+) -> Result<Manifold<T>, BooleanError> {
     let eps = mp.spatial_tol.max(mq.spatial_tol);
     let tol = mp.snap_tol.max(mq.snap_tol);
 
@@ -68,7 +72,13 @@ pub fn compute_boolean<T: BoolReal>(mp: &Manifold<T>, mq: &Manifold<T>, op: OpTy
         b45.ps,
         trg.hs
             .chunks(3)
-            .map(|h| Vector3::new(usize::from(h[0].tail), usize::from(h[1].tail), usize::from(h[2].tail)))
+            .map(|h| {
+                Vector3::new(
+                    usize::from(h[0].tail),
+                    usize::from(h[1].tail),
+                    usize::from(h[2].tail),
+                )
+            })
             .collect(),
         Some(eps),
         Some(tol),
@@ -113,12 +123,17 @@ pub enum ProjectionError {
 /// Projects the manifold onto the XY plane. Rotate the manifold to project onto custom planes.
 /// * manifold - Input manifold to project
 #[deprecated(since = "0.1.10", note = "Use `Manifold::project_xy()` instead")]
-pub fn compute_projection<T: BoolReal + BoolOpsNum>(manifold: &Manifold<T>) -> Result<MultiPolygon<T>, ProjectionError> {
+pub fn compute_projection<T: BoolReal + BoolOpsNum>(
+    manifold: &Manifold<T>,
+) -> Result<MultiPolygon<T>, ProjectionError> {
     manifold.project_xy()
 }
 
 #[deprecated(since = "0.1.10", note = "Use `Manifold::slice()` instead")]
-pub fn compute_slice<T: BoolReal + BoolOpsNum>(manifold: &Manifold<T>, height: T) -> Result<MultiPolygon<T>, SliceError> {
+pub fn compute_slice<T: BoolReal + BoolOpsNum>(
+    manifold: &Manifold<T>,
+    height: T,
+) -> Result<MultiPolygon<T>, SliceError> {
     manifold.slice(height)
 }
 

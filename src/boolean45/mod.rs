@@ -4,11 +4,11 @@
 use indexmap::IndexMap;
 use nalgebra::Vector3;
 
+use crate::OpType;
 use crate::boolean03::Boolean03;
 use crate::bounds::BBox;
 use crate::common::BoolReal;
-use crate::OpType;
-use crate::{face_of, HalfEdge, HalfEdgeId, Manifold, Tref};
+use crate::{HalfEdge, HalfEdgeId, Manifold, Tref, face_of};
 use std::mem;
 
 fn duplicate_verts<T: BoolReal>(
@@ -243,17 +243,17 @@ fn pair_up<T: BoolReal>(pts: &mut [EdgePt<T>]) -> Vec<HalfEdge> {
 }
 
 fn append_partial_edges<T: BoolReal>(
-    i03: &[i32],                                 //
-    hs_p: &[HalfEdge],                           // halfedges in mfd_p
-    ps_p: &[Vector3<T>],                         //
-    ps_r: &[Vector3<T>],                         // the vert pos of mfd_r, already fulfilled so far
-    vid_p2r: &[i32],                             // map from vid in mfd_p to vid in mfd_r
-    fid_p2r: &[i32],                             // map from fid in mfd_p to fid in mfd_r
-    fwd: bool,                                   //
-    hs_r: &mut [HalfEdge],                       // halfedge data of mfd_r, empty yet
-    rs_r: &mut [Tref],                           // map from halfedge in mfd_r to triangle info
+    i03: &[i32],                                //
+    hs_p: &[HalfEdge],                          // halfedges in mfd_p
+    ps_p: &[Vector3<T>],                        //
+    ps_r: &[Vector3<T>],                        // the vert pos of mfd_r, already fulfilled so far
+    vid_p2r: &[i32],                            // map from vid in mfd_p to vid in mfd_r
+    fid_p2r: &[i32],                            // map from fid in mfd_p to fid in mfd_r
+    fwd: bool,                                  //
+    hs_r: &mut [HalfEdge],                      // halfedge data of mfd_r, empty yet
+    rs_r: &mut [Tref],                          // map from halfedge in mfd_r to triangle info
     pt_p: &mut IndexMap<usize, Vec<EdgePt<T>>>, //
-    face_ptr_r: &mut [i32],                      //
+    face_ptr_r: &mut [i32],                     //
     whole_flag: &mut [bool], // a flag to find out a halfedge from mfd_p is entirely usable in mfd_r
 ) {
     for (hid_p, pt) in pt_p {
@@ -514,7 +514,7 @@ pub fn boolean45<T: BoolReal>(
     let mut pt_p = IndexMap::with_capacity_and_hasher(b03.p1q2.len() * 2, Default::default());
     let mut pt_q = IndexMap::with_capacity_and_hasher(b03.p2q1.len() * 2, Default::default());
     let mut pt_new = IndexMap::with_capacity_and_hasher(b03.p1q2.len() * 2, Default::default());
-      add_new_edge_verts(
+    add_new_edge_verts(
         &b03.p1q2,
         &i12,
         &vid_12r,

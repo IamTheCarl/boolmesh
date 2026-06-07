@@ -8,9 +8,6 @@ use crate::bounds::{BBox, Query};
 use crate::common::BoolReal;
 use crate::{HalfEdge, Manifold};
 use nalgebra::Vector3;
-#[cfg(feature = "rayon")]
-use rayon::prelude::*;
-
 pub struct Kernel12<'a, T> {
     pub hs_p: &'a [HalfEdge],
     pub hs_q: &'a [HalfEdge],
@@ -50,7 +47,11 @@ impl<'a, T: BoolReal> Kernel12<'a, T> {
         for i in 0..3 {
             let q1 = 3 * q2 + i;
             let h = &self.hs_q[q1];
-            let q1f = if h.is_forward() { q1 } else { usize::from(h.pair) };
+            let q1f = if h.is_forward() {
+                q1
+            } else {
+                usize::from(h.pair)
+            };
             let op = if self.fwd {
                 self.k11.op(p1, q1f)
             } else {
@@ -131,7 +132,15 @@ pub fn intersect12<T: BoolReal>(
         .iter()
         .enumerate()
         .filter(|(_, h)| h.is_forward())
-        .map(|(i, h)| Query::Bb(BBox::new(Some(i), &[ma.positions[usize::from(h.tail)], ma.positions[usize::from(h.head)]])));
+        .map(|(i, h)| {
+            Query::Bb(BBox::new(
+                Some(i),
+                &[
+                    ma.positions[usize::from(h.tail)],
+                    ma.positions[usize::from(h.head)],
+                ],
+            ))
+        });
 
     let mut x12_ = vec![];
     let mut v12_ = vec![];

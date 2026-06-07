@@ -58,11 +58,7 @@ pub fn intersect<T: BoolReal>(
     let use_p = p_dy.abs() < q_dy.abs();
     xyzz.y = lambda * if use_p { p_dy } else { q_dy }
         + (if use_l {
-            if use_p {
-                pl.y
-            } else {
-                ql.y
-            }
+            if use_p { pl.y } else { ql.y }
         } else if use_p {
             pr.y
         } else {
@@ -74,11 +70,7 @@ pub fn intersect<T: BoolReal>(
 }
 
 pub fn shadows<T: BoolReal>(p: T, q: T, dir: T) -> bool {
-    if p == q {
-        dir < T::zero()
-    } else {
-        p < q
-    }
+    if p == q { dir < T::zero() } else { p < q }
 }
 
 // This is equivalent to Kernel01 or X01 in the thesis.

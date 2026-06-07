@@ -7,7 +7,9 @@ use super::{
     collapse_edge, form_loops, head_of, hids_of, is01_longest_2d, next_of, pair_of, pair_up,
     remove_if_folded, tail_of,
 };
-use crate::{common::BoolReal, compute_aa_proj, get_aa_proj_matrix, is_ccw_2d, HalfEdge, HalfEdgeId, Tref};
+use crate::{
+    HalfEdge, HalfEdgeId, Tref, common::BoolReal, compute_aa_proj, get_aa_proj_matrix, is_ccw_2d,
+};
 
 fn record<T: BoolReal>(
     hs: &[HalfEdge],

@@ -39,7 +39,7 @@ fn edge_topology<T: BoolReal>(
         return Err(HmeshError::EmptyIndexMatrix);
     }
 
-     let mut edge_map: FxHashMap<(usize, usize), Vec<(usize, usize)>> = FxHashMap::default();
+    let mut edge_map: FxHashMap<(usize, usize), Vec<(usize, usize)>> = FxHashMap::default();
 
     for (tri_id, idx_) in idx.iter().enumerate() {
         for j in 0..3 {

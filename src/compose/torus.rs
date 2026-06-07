@@ -3,7 +3,7 @@
 
 use nalgebra::Vector3;
 
-use crate::{common::BoolReal, manifold::ManifoldError, Manifold};
+use crate::{Manifold, common::BoolReal, manifold::ManifoldError};
 
 pub fn generate_torus<T: BoolReal>(
     r0: T,     // major radius

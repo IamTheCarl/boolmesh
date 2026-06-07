@@ -4,7 +4,7 @@
 use nalgebra::Vector3;
 use thiserror::Error;
 
-use crate::{common::BoolReal, manifold::ManifoldError, Manifold};
+use crate::{Manifold, common::BoolReal, manifold::ManifoldError};
 
 pub fn generate_cylinder<T: BoolReal>(
     r: T,      // radius

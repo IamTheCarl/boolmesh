@@ -11,10 +11,10 @@
 
 // ExtrudePoly trait is needed for extrude() and revolve() methods on geo types
 use boolmesh::prelude::ExtrudePoly;
-use boolmesh::prelude::compose;
 use boolmesh::prelude::Manifold;
-use geo::Rect;
+use boolmesh::prelude::compose;
 use geo::Coord;
+use geo::Rect;
 
 mod helpers {
     use boolmesh::prelude::*;
@@ -42,13 +42,7 @@ mod helpers {
     }
 
     pub fn cone() -> Manifold<f64> {
-        generate_cone::<f64>(
-            Vector3::new(0., 0., 0.),
-            Vector3::new(0., 0., 1.),
-            1.,
-            30,
-        )
-        .unwrap()
+        generate_cone::<f64>(Vector3::new(0., 0., 0.), Vector3::new(0., 0., 1.), 1., 30).unwrap()
     }
 
     pub fn hollow_square() -> MultiPolygon<f64> {
@@ -69,12 +63,15 @@ mod helpers {
     /// each ring at the lexicographically smallest coordinate. Exterior rings are
     /// forced CCW, interior rings CW, to guarantee consistent vertex ordering.
     fn canonicalize_polygon(poly: &MultiPolygon<f64>) -> MultiPolygon<f64> {
-        use geo::LineString;
-        let polygons: Vec<_> = poly.0.iter().map(|p| {
-            let ext = force_ccw_ring(p.exterior());
-            let ints: Vec<_> = p.interiors().iter().map(|r| force_cw_ring(r)).collect();
-            Polygon::new(ext, ints)
-        }).collect();
+        let polygons: Vec<_> = poly
+            .0
+            .iter()
+            .map(|p| {
+                let ext = force_ccw_ring(p.exterior());
+                let ints: Vec<_> = p.interiors().iter().map(|r| force_cw_ring(r)).collect();
+                Polygon::new(ext, ints)
+            })
+            .collect();
         MultiPolygon(polygons)
     }
 
@@ -82,14 +79,21 @@ mod helpers {
         let coords: Vec<_> = ring.coords().map(|c| Coord { x: c.x, y: c.y }).collect();
         // Remove duplicate closing point (first == last)
         let mut unique = coords;
-        if unique.len() >= 2 && unique[0].x == unique[unique.len()-1].x && unique[0].y == unique[unique.len()-1].y {
+        if unique.len() >= 2
+            && unique[0].x == unique[unique.len() - 1].x
+            && unique[0].y == unique[unique.len() - 1].y
+        {
             unique.pop();
         }
         // Rotate so the lexicographically smallest coord comes first
         if unique.len() >= 2 {
-            let min_idx = (1..unique.len()).min_by(|&i, &j| {
-                (unique[i].x, unique[i].y).partial_cmp(&(unique[j].x, unique[j].y)).unwrap_or(std::cmp::Ordering::Equal)
-            }).unwrap_or(1);
+            let min_idx = (1..unique.len())
+                .min_by(|&i, &j| {
+                    (unique[i].x, unique[i].y)
+                        .partial_cmp(&(unique[j].x, unique[j].y))
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                })
+                .unwrap_or(1);
             if min_idx > 0 {
                 unique.rotate_left(min_idx);
             }
@@ -106,7 +110,9 @@ mod helpers {
         let mut r = canonicalize_ring(ring);
         // Calculate signed area (shoelace formula) - positive = CCW, negative = CW
         let coords: Vec<_> = r.coords().map(|c| Coord { x: c.x, y: c.y }).collect();
-        let area: f64 = coords.iter().zip(coords.iter().skip(1).chain(coords.iter().take(1)))
+        let area: f64 = coords
+            .iter()
+            .zip(coords.iter().skip(1).chain(coords.iter().take(1)))
             .fold(0.0f64, |acc, (a, b)| acc + a.x * b.y - a.y * b.x);
         if area < 0.0 {
             // Reverse the ring to make it CCW
@@ -124,7 +130,9 @@ mod helpers {
         let mut r = canonicalize_ring(ring);
         // Calculate signed area (shoelace formula) - positive = CCW, negative = CW
         let coords: Vec<_> = r.coords().map(|c| Coord { x: c.x, y: c.y }).collect();
-        let area: f64 = coords.iter().zip(coords.iter().skip(1).chain(coords.iter().take(1)))
+        let area: f64 = coords
+            .iter()
+            .zip(coords.iter().skip(1).chain(coords.iter().take(1)))
             .fold(0.0f64, |acc, (a, b)| acc + a.x * b.y - a.y * b.x);
         if area > 0.0 {
             // Reverse the ring to make it CW
@@ -222,7 +230,10 @@ fn test_primitive_cylinder() {
     let bytes = include_bytes!("fixtures/cylinder.bincode");
     let expected: Manifold<f64> = bincode::deserialize(bytes).unwrap();
     let actual = helpers::cylinder();
-    assert!(actual.approx_eq(&expected, 1e-10), "cylinder geometry mismatch");
+    assert!(
+        actual.approx_eq(&expected, 1e-10),
+        "cylinder geometry mismatch"
+    );
 }
 
 #[test]
@@ -230,7 +241,10 @@ fn test_primitive_uv_sphere() {
     let bytes = include_bytes!("fixtures/uv_sphere.bincode");
     let expected: Manifold<f64> = bincode::deserialize(bytes).unwrap();
     let actual = helpers::uv_sphere();
-    assert!(actual.approx_eq(&expected, 1e-10), "uv_sphere geometry mismatch");
+    assert!(
+        actual.approx_eq(&expected, 1e-10),
+        "uv_sphere geometry mismatch"
+    );
 }
 
 #[test]
@@ -238,7 +252,10 @@ fn test_primitive_icosphere() {
     let bytes = include_bytes!("fixtures/icosphere.bincode");
     let expected: Manifold<f64> = bincode::deserialize(bytes).unwrap();
     let actual = helpers::icosphere();
-    assert!(actual.approx_eq(&expected, 1e-10), "icosphere geometry mismatch");
+    assert!(
+        actual.approx_eq(&expected, 1e-10),
+        "icosphere geometry mismatch"
+    );
 }
 
 #[test]
@@ -246,7 +263,10 @@ fn test_primitive_torus() {
     let bytes = include_bytes!("fixtures/torus.bincode");
     let expected: Manifold<f64> = bincode::deserialize(bytes).unwrap();
     let actual = helpers::torus();
-    assert!(actual.approx_eq(&expected, 1e-10), "torus geometry mismatch");
+    assert!(
+        actual.approx_eq(&expected, 1e-10),
+        "torus geometry mismatch"
+    );
 }
 
 #[test]
@@ -266,14 +286,19 @@ fn test_transform_translate() {
     let bytes = include_bytes!("fixtures/cube_translated.bincode");
     let expected: Manifold<f64> = bincode::deserialize(bytes).unwrap();
     let actual = helpers::cube().translate(2., 0., 0.).unwrap();
-    assert!(actual.approx_eq(&expected, 1e-10), "cube translate mismatch");
+    assert!(
+        actual.approx_eq(&expected, 1e-10),
+        "cube translate mismatch"
+    );
 }
 
 #[test]
 fn test_transform_rotate() {
     let bytes = include_bytes!("fixtures/cube_rotated.bincode");
     let expected: Manifold<f64> = bincode::deserialize(bytes).unwrap();
-    let actual = helpers::cube().rotate(std::f64::consts::PI / 4., 0., 0.).unwrap();
+    let actual = helpers::cube()
+        .rotate(std::f64::consts::PI / 4., 0., 0.)
+        .unwrap();
     assert!(actual.approx_eq(&expected, 1e-10), "cube rotate mismatch");
 }
 
@@ -296,7 +321,10 @@ fn test_boolean_add() {
     let a = helpers::cube();
     let b = a.translate(2., 0., 0.).unwrap();
     let actual = boolmesh::compute_boolean(&a, &b, boolmesh::prelude::OpType::Add).unwrap();
-    assert!(actual.approx_eq(&expected, 1e-10), "cube + cube add mismatch");
+    assert!(
+        actual.approx_eq(&expected, 1e-10),
+        "cube + cube add mismatch"
+    );
 }
 
 #[test]
@@ -306,7 +334,10 @@ fn test_boolean_subtract() {
     let a = helpers::cube();
     let b = a.translate(0.1, 0., 0.).unwrap();
     let actual = boolmesh::compute_boolean(&a, &b, boolmesh::prelude::OpType::Subtract).unwrap();
-    assert!(actual.approx_eq(&expected, 1e-10), "cube - cube subtract mismatch");
+    assert!(
+        actual.approx_eq(&expected, 1e-10),
+        "cube - cube subtract mismatch"
+    );
 }
 
 #[test]
@@ -316,7 +347,10 @@ fn test_boolean_intersect() {
     let a = helpers::cube();
     let b = a.translate(0.1, 0., 0.).unwrap();
     let actual = boolmesh::compute_boolean(&a, &b, boolmesh::prelude::OpType::Intersect).unwrap();
-    assert!(actual.approx_eq(&expected, 1e-10), "cube intersect cube mismatch");
+    assert!(
+        actual.approx_eq(&expected, 1e-10),
+        "cube intersect cube mismatch"
+    );
 }
 
 #[test]
@@ -327,7 +361,10 @@ fn test_boolean_cyl_sphere_add() {
     let sph = helpers::uv_sphere();
     let sph_t = sph.translate(0., 0.5, 0.).unwrap();
     let actual = boolmesh::compute_boolean(&cyl, &sph_t, boolmesh::prelude::OpType::Add).unwrap();
-    assert!(actual.approx_eq(&expected, 1e-10), "cylinder + sphere add mismatch");
+    assert!(
+        actual.approx_eq(&expected, 1e-10),
+        "cylinder + sphere add mismatch"
+    );
 }
 
 #[test]
@@ -339,8 +376,12 @@ fn test_boolean_cyl_sphere_sub_torus() {
     let sph_t = sph.translate(0., 0.5, 0.).unwrap();
     let cyl_sph = boolmesh::compute_boolean(&cyl, &sph_t, boolmesh::prelude::OpType::Add).unwrap();
     let torus = helpers::torus();
-    let actual = boolmesh::compute_boolean(&cyl_sph, &torus, boolmesh::prelude::OpType::Subtract).unwrap();
-    assert!(actual.approx_eq(&expected, 1e-10), "(cyl+sphere) - torus mismatch");
+    let actual =
+        boolmesh::compute_boolean(&cyl_sph, &torus, boolmesh::prelude::OpType::Subtract).unwrap();
+    assert!(
+        actual.approx_eq(&expected, 1e-10),
+        "(cyl+sphere) - torus mismatch"
+    );
 }
 
 // ========================
@@ -352,32 +393,62 @@ fn test_extrude_square() {
     let bytes = include_bytes!("fixtures/extrude_square.bincode");
     let expected: Manifold<f64> = bincode::deserialize(bytes).unwrap();
     let square = Rect::new(Coord { x: -0.5, y: -0.5 }, Coord { x: 0.5, y: 0.5 }).to_polygon();
-    let actual = square.extrude(1.0, 1, 0.0, nalgebra::Vector2::new(1.0, 1.0)).unwrap();
-    assert!(actual.approx_eq(&expected, 1e-10), "extrude_square mismatch");
+    let actual = square
+        .extrude(1.0, 1, 0.0, nalgebra::Vector2::new(1.0, 1.0))
+        .unwrap();
+    assert!(
+        actual.approx_eq(&expected, 1e-10),
+        "extrude_square mismatch"
+    );
 }
 
 #[test]
 fn test_extrude_hollow_square() {
     let bytes = include_bytes!("fixtures/extrude_hollow_square.bincode");
     let expected: Manifold<f64> = bincode::deserialize(bytes).unwrap();
-    let actual = helpers::hollow_square().extrude(1.0, 1, 0.0, nalgebra::Vector2::new(1.0, 1.0)).unwrap();
-    assert!(actual.approx_eq(&expected, 1e-10), "extrude_hollow_square mismatch");
+    let actual = helpers::hollow_square()
+        .extrude(1.0, 1, 0.0, nalgebra::Vector2::new(1.0, 1.0))
+        .unwrap();
+    assert!(
+        actual.approx_eq(&expected, 1e-10),
+        "extrude_hollow_square mismatch"
+    );
 }
 
 #[test]
 fn test_extrude_twisted() {
     let bytes = include_bytes!("fixtures/extrude_twisted.bincode");
     let expected: Manifold<f64> = bincode::deserialize(bytes).unwrap();
-    let actual = helpers::hollow_square().extrude(1.0, 20, std::f64::consts::PI, nalgebra::Vector2::new(1.0, 1.0)).unwrap();
-    assert!(actual.approx_eq(&expected, 1e-10), "extrude_twisted mismatch");
+    let actual = helpers::hollow_square()
+        .extrude(
+            1.0,
+            20,
+            std::f64::consts::PI,
+            nalgebra::Vector2::new(1.0, 1.0),
+        )
+        .unwrap();
+    assert!(
+        actual.approx_eq(&expected, 1e-10),
+        "extrude_twisted mismatch"
+    );
 }
 
 #[test]
 fn test_extrude_tapered() {
     let bytes = include_bytes!("fixtures/extrude_tapered.bincode");
     let expected: Manifold<f64> = bincode::deserialize(bytes).unwrap();
-    let actual = helpers::hollow_square().extrude(1.0, 50, std::f64::consts::PI, nalgebra::Vector2::new(0.0, 0.0)).unwrap();
-    assert!(actual.approx_eq(&expected, 1e-10), "extrude_tapered mismatch");
+    let actual = helpers::hollow_square()
+        .extrude(
+            1.0,
+            50,
+            std::f64::consts::PI,
+            nalgebra::Vector2::new(0.0, 0.0),
+        )
+        .unwrap();
+    assert!(
+        actual.approx_eq(&expected, 1e-10),
+        "extrude_tapered mismatch"
+    );
 }
 
 // ========================
@@ -388,15 +459,22 @@ fn test_extrude_tapered() {
 fn test_revolve_full() {
     let bytes = include_bytes!("fixtures/revolve_square.bincode");
     let expected: Manifold<f64> = bincode::deserialize(bytes).unwrap();
-    let actual = helpers::square_with_bite().revolve(15, std::f64::consts::PI * 2.0).unwrap();
-    assert!(actual.approx_eq(&expected, 1e-10), "revolve_square mismatch");
+    let actual = helpers::square_with_bite()
+        .revolve(15, std::f64::consts::PI * 2.0)
+        .unwrap();
+    assert!(
+        actual.approx_eq(&expected, 1e-10),
+        "revolve_square mismatch"
+    );
 }
 
 #[test]
 fn test_revolve_half() {
     let bytes = include_bytes!("fixtures/revolve_half.bincode");
     let expected: Manifold<f64> = bincode::deserialize(bytes).unwrap();
-    let actual = helpers::square_with_bite().revolve(5, std::f64::consts::PI * 0.5).unwrap();
+    let actual = helpers::square_with_bite()
+        .revolve(5, std::f64::consts::PI * 0.5)
+        .unwrap();
     assert!(actual.approx_eq(&expected, 1e-10), "revolve_half mismatch");
 }
 
@@ -409,7 +487,10 @@ fn test_projection_cube() {
     let bytes = include_bytes!("fixtures/cube_project.bincode");
     let expected: geo::MultiPolygon<f64> = bincode::deserialize(bytes).unwrap();
     let actual = helpers::cube().project_xy().unwrap();
-    assert!(helpers::polygons_approx_eq(&actual, &expected, 1e-10), "cube projection mismatch");
+    assert!(
+        helpers::polygons_approx_eq(&actual, &expected, 1e-10),
+        "cube projection mismatch"
+    );
 }
 
 #[test]
@@ -417,7 +498,10 @@ fn test_projection_cylinder() {
     let bytes = include_bytes!("fixtures/cylinder_project.bincode");
     let expected: geo::MultiPolygon<f64> = bincode::deserialize(bytes).unwrap();
     let actual = helpers::cylinder().project_xy().unwrap();
-    assert!(helpers::polygons_approx_eq(&actual, &expected, 1e-10), "cylinder projection mismatch");
+    assert!(
+        helpers::polygons_approx_eq(&actual, &expected, 1e-10),
+        "cylinder projection mismatch"
+    );
 }
 
 #[test]
@@ -425,7 +509,10 @@ fn test_projection_uv_sphere() {
     let bytes = include_bytes!("fixtures/uv_sphere_project.bincode");
     let expected: geo::MultiPolygon<f64> = bincode::deserialize(bytes).unwrap();
     let actual = helpers::uv_sphere().project_xy().unwrap();
-    assert!(helpers::polygons_approx_eq(&actual, &expected, 1e-10), "uv_sphere projection mismatch");
+    assert!(
+        helpers::polygons_approx_eq(&actual, &expected, 1e-10),
+        "uv_sphere projection mismatch"
+    );
 }
 
 #[test]
@@ -433,7 +520,10 @@ fn test_projection_icosphere() {
     let bytes = include_bytes!("fixtures/icosphere_project.bincode");
     let expected: geo::MultiPolygon<f64> = bincode::deserialize(bytes).unwrap();
     let actual = helpers::icosphere().project_xy().unwrap();
-    assert!(helpers::polygons_approx_eq(&actual, &expected, 1e-10), "icosphere projection mismatch");
+    assert!(
+        helpers::polygons_approx_eq(&actual, &expected, 1e-10),
+        "icosphere projection mismatch"
+    );
 }
 
 #[test]
@@ -441,7 +531,10 @@ fn test_projection_torus() {
     let bytes = include_bytes!("fixtures/torus_project.bincode");
     let expected: geo::MultiPolygon<f64> = bincode::deserialize(bytes).unwrap();
     let actual = helpers::torus().project_xy().unwrap();
-    assert!(helpers::polygons_approx_eq(&actual, &expected, 1e-10), "torus projection mismatch");
+    assert!(
+        helpers::polygons_approx_eq(&actual, &expected, 1e-10),
+        "torus projection mismatch"
+    );
 }
 
 #[test]
@@ -449,27 +542,42 @@ fn test_projection_extrude_square() {
     let bytes = include_bytes!("fixtures/extrude_square_project.bincode");
     let expected: geo::MultiPolygon<f64> = bincode::deserialize(bytes).unwrap();
     let square = Rect::new(Coord { x: -0.5, y: -0.5 }, Coord { x: 0.5, y: 0.5 }).to_polygon();
-    let m = square.extrude(1.0, 1, 0.0, nalgebra::Vector2::new(1.0, 1.0)).unwrap();
+    let m = square
+        .extrude(1.0, 1, 0.0, nalgebra::Vector2::new(1.0, 1.0))
+        .unwrap();
     let actual = m.project_xy().unwrap();
-    assert!(helpers::polygons_approx_eq(&actual, &expected, 1e-10), "extrude_square projection mismatch");
+    assert!(
+        helpers::polygons_approx_eq(&actual, &expected, 1e-10),
+        "extrude_square projection mismatch"
+    );
 }
 
 #[test]
 fn test_projection_extrude_hollow() {
     let bytes = include_bytes!("fixtures/extrude_hollow_project.bincode");
     let expected: geo::MultiPolygon<f64> = bincode::deserialize(bytes).unwrap();
-    let m = helpers::hollow_square().extrude(1.0, 1, 0.0, nalgebra::Vector2::new(1.0, 1.0)).unwrap();
+    let m = helpers::hollow_square()
+        .extrude(1.0, 1, 0.0, nalgebra::Vector2::new(1.0, 1.0))
+        .unwrap();
     let actual = m.project_xy().unwrap();
-    assert!(helpers::polygons_approx_eq(&actual, &expected, 1e-10), "extrude_hollow projection mismatch");
+    assert!(
+        helpers::polygons_approx_eq(&actual, &expected, 1e-10),
+        "extrude_hollow projection mismatch"
+    );
 }
 
 #[test]
 fn test_projection_revolve_square() {
     let bytes = include_bytes!("fixtures/revolve_square_project.bincode");
     let expected: geo::MultiPolygon<f64> = bincode::deserialize(bytes).unwrap();
-    let m = helpers::square_with_bite().revolve(15, std::f64::consts::PI * 2.0).unwrap();
+    let m = helpers::square_with_bite()
+        .revolve(15, std::f64::consts::PI * 2.0)
+        .unwrap();
     let actual = m.project_xy().unwrap();
-    assert!(helpers::polygons_approx_eq(&actual, &expected, 1e-10), "revolve_square projection mismatch");
+    assert!(
+        helpers::polygons_approx_eq(&actual, &expected, 1e-10),
+        "revolve_square projection mismatch"
+    );
 }
 
 // ========================
@@ -481,7 +589,10 @@ fn test_slice_cube_0() {
     let bytes = include_bytes!("fixtures/cube_slice_0.bincode");
     let expected: geo::MultiPolygon<f64> = bincode::deserialize(bytes).unwrap();
     let actual = helpers::cube().slice(0.0).unwrap();
-    assert!(helpers::polygons_approx_eq(&actual, &expected, 1e-10), "cube slice 0 mismatch");
+    assert!(
+        helpers::polygons_approx_eq(&actual, &expected, 1e-10),
+        "cube slice 0 mismatch"
+    );
 }
 
 #[test]
@@ -489,7 +600,10 @@ fn test_slice_cube_025() {
     let bytes = include_bytes!("fixtures/cube_slice_025.bincode");
     let expected: geo::MultiPolygon<f64> = bincode::deserialize(bytes).unwrap();
     let actual = helpers::cube().slice(0.25).unwrap();
-    assert!(helpers::polygons_approx_eq(&actual, &expected, 1e-10), "cube slice 0.25 mismatch");
+    assert!(
+        helpers::polygons_approx_eq(&actual, &expected, 1e-10),
+        "cube slice 0.25 mismatch"
+    );
 }
 
 #[test]
@@ -497,7 +611,10 @@ fn test_slice_cube_minus025() {
     let bytes = include_bytes!("fixtures/cube_slice_minus025.bincode");
     let expected: geo::MultiPolygon<f64> = bincode::deserialize(bytes).unwrap();
     let actual = helpers::cube().slice(-0.25).unwrap();
-    assert!(helpers::polygons_approx_eq(&actual, &expected, 1e-10), "cube slice -0.25 mismatch");
+    assert!(
+        helpers::polygons_approx_eq(&actual, &expected, 1e-10),
+        "cube slice -0.25 mismatch"
+    );
 }
 
 #[test]
@@ -517,7 +634,10 @@ fn test_compose_two_cubes() {
     let a = helpers::cube();
     let b = a.translate(2., 0., 0.).unwrap();
     let actual = compose(&vec![a, b]).unwrap();
-    assert!(actual.approx_eq(&expected, 1e-10), "compose_two_cubes mismatch");
+    assert!(
+        actual.approx_eq(&expected, 1e-10),
+        "compose_two_cubes mismatch"
+    );
 }
 
 #[test]
@@ -525,16 +645,27 @@ fn debug_hollow_in_test() {
     let hollow = helpers::hollow_square();
     let ext: Vec<_> = hollow.0[0].exterior().coords().collect();
     println!("hollow exterior: {:?}", ext);
-    
-    let e1 = hollow.extrude(1.0, 50, std::f64::consts::PI, nalgebra::Vector2::new(0.0, 0.0)).unwrap();
+
+    let e1 = hollow
+        .extrude(
+            1.0,
+            50,
+            std::f64::consts::PI,
+            nalgebra::Vector2::new(0.0, 0.0),
+        )
+        .unwrap();
     let bytes = include_bytes!("fixtures/extrude_tapered.bincode");
     let expected: Manifold<f64> = bincode::deserialize(bytes).unwrap();
-    
+
     let p1: Vec<_> = e1.positions().iter().map(|p| (p.x, p.y, p.z)).collect();
-    let p2: Vec<_> = expected.positions().iter().map(|p| (p.x, p.y, p.z)).collect();
+    let p2: Vec<_> = expected
+        .positions()
+        .iter()
+        .map(|p| (p.x, p.y, p.z))
+        .collect();
     println!("positions match: {}", p1 == p2);
     println!("approx_eq: {}", e1.approx_eq(&expected, 1e-10));
-    
+
     assert!(e1.approx_eq(&expected, 1e-10), "extrude_tapered mismatch");
 }
 
@@ -542,14 +673,25 @@ fn debug_hollow_in_test() {
 fn debug_vertex_ids_in_test() {
     let bytes = include_bytes!("fixtures/extrude_tapered.bincode");
     let expected: Manifold<f64> = bincode::deserialize(bytes).unwrap();
-    
+
     let hollow = helpers::hollow_square();
-    let actual = hollow.extrude(1.0, 50, std::f64::consts::PI, nalgebra::Vector2::new(0.0, 0.0)).unwrap();
-    
+    let actual = hollow
+        .extrude(
+            1.0,
+            50,
+            std::f64::consts::PI,
+            nalgebra::Vector2::new(0.0, 0.0),
+        )
+        .unwrap();
+
     // Compare face_vertex_ids
-    let vid1: Vec<[usize; 3]> = (0..expected.face_count()).map(|fid| expected.face_vertex_ids(fid)).collect();
-    let vid2: Vec<[usize; 3]> = (0..actual.face_count()).map(|fid| actual.face_vertex_ids(fid)).collect();
-    
+    let vid1: Vec<[usize; 3]> = (0..expected.face_count())
+        .map(|fid| expected.face_vertex_ids(fid))
+        .collect();
+    let vid2: Vec<[usize; 3]> = (0..actual.face_count())
+        .map(|fid| actual.face_vertex_ids(fid))
+        .collect();
+
     let mut s1 = vid1.clone();
     let mut s2 = vid2.clone();
     for idx in s1.iter_mut().chain(s2.iter_mut()) {
@@ -557,7 +699,7 @@ fn debug_vertex_ids_in_test() {
     }
     s1.sort();
     s2.sort();
-    
+
     let mut diff = 0;
     for (i, (a, b)) in s1.iter().zip(s2.iter()).enumerate() {
         if a != b {
@@ -574,8 +716,14 @@ fn debug_vertex_ids_in_test() {
 #[test]
 fn debug_poly_in_test() {
     let hollow = helpers::hollow_square();
-    println!("hollow exterior: {:?}", hollow.0[0].exterior().coords().collect::<Vec<_>>());
+    println!(
+        "hollow exterior: {:?}",
+        hollow.0[0].exterior().coords().collect::<Vec<_>>()
+    );
     if !hollow.0[0].interiors().is_empty() {
-        println!("hollow interior: {:?}", hollow.0[0].interiors()[0].coords().collect::<Vec<_>>());
+        println!(
+            "hollow interior: {:?}",
+            hollow.0[0].interiors()[0].coords().collect::<Vec<_>>()
+        );
     }
 }

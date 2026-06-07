@@ -148,19 +148,29 @@ impl VertexId {
     const INVALID: Self = Self(u32::MAX);
 
     #[inline]
-    pub fn invalid() -> Self { Self::INVALID }
+    pub fn invalid() -> Self {
+        Self::INVALID
+    }
 
     #[inline]
-    pub fn is_invalid(&self) -> bool { self.0 == Self::INVALID.0 }
+    pub fn is_invalid(&self) -> bool {
+        self.0 == Self::INVALID.0
+    }
 
     #[inline]
-    pub fn to_u32(&self) -> u32 { self.0 }
+    pub fn to_u32(&self) -> u32 {
+        self.0
+    }
 
     #[inline]
-    pub fn to_usize(&self) -> usize { self.0 as usize }
+    pub fn to_usize(&self) -> usize {
+        self.0 as usize
+    }
 
     #[inline]
-    pub fn from_u32(v: u32) -> Self { Self(v) }
+    pub fn from_u32(v: u32) -> Self {
+        Self(v)
+    }
 
     #[inline]
     pub fn from_usize(v: usize) -> Self {
@@ -170,22 +180,30 @@ impl VertexId {
 
 impl From<u32> for VertexId {
     #[inline]
-    fn from(v: u32) -> Self { Self::from_u32(v) }
+    fn from(v: u32) -> Self {
+        Self::from_u32(v)
+    }
 }
 
 impl From<usize> for VertexId {
     #[inline]
-    fn from(v: usize) -> Self { Self::from_usize(v) }
+    fn from(v: usize) -> Self {
+        Self::from_usize(v)
+    }
 }
 
 impl From<VertexId> for u32 {
     #[inline]
-    fn from(v: VertexId) -> u32 { v.to_u32() }
+    fn from(v: VertexId) -> u32 {
+        v.to_u32()
+    }
 }
 
 impl From<VertexId> for usize {
     #[inline]
-    fn from(v: VertexId) -> usize { v.to_usize() }
+    fn from(v: VertexId) -> usize {
+        v.to_usize()
+    }
 }
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -198,28 +216,44 @@ impl HalfEdgeId {
     const INVALID_REMOVED: Self = Self(u32::MAX - 1);
 
     #[inline]
-    pub fn invalid() -> Self { Self::INVALID }
+    pub fn invalid() -> Self {
+        Self::INVALID
+    }
 
     #[inline]
-    pub fn invalid_removed() -> Self { Self::INVALID_REMOVED }
+    pub fn invalid_removed() -> Self {
+        Self::INVALID_REMOVED
+    }
 
     #[inline]
-    pub fn is_invalid(&self) -> bool { self.0 == Self::INVALID.0 }
+    pub fn is_invalid(&self) -> bool {
+        self.0 == Self::INVALID.0
+    }
 
     #[inline]
-    pub fn is_removed(&self) -> bool { self.0 == Self::INVALID_REMOVED.0 }
+    pub fn is_removed(&self) -> bool {
+        self.0 == Self::INVALID_REMOVED.0
+    }
 
     #[inline]
-    pub fn to_u32(&self) -> u32 { self.0 }
+    pub fn to_u32(&self) -> u32 {
+        self.0
+    }
 
     #[inline]
-    pub fn to_usize(&self) -> usize { self.0 as usize }
+    pub fn to_usize(&self) -> usize {
+        self.0 as usize
+    }
 
     #[inline]
-    pub fn face_id(self) -> usize { self.0 as usize / 3 }
+    pub fn face_id(self) -> usize {
+        self.0 as usize / 3
+    }
 
     #[inline]
-    pub fn edge_index(self) -> usize { self.0 as usize % 3 }
+    pub fn edge_index(self) -> usize {
+        self.0 as usize % 3
+    }
 
     #[inline]
     pub fn next_in_face(self) -> usize {
@@ -229,28 +263,40 @@ impl HalfEdgeId {
 
     #[inline]
     pub fn prev_in_face(self) -> usize {
-        if self.0 == 0 { (self.0 + 2) as usize } else { (self.0 - 3) as usize }
+        if self.0 == 0 {
+            (self.0 + 2) as usize
+        } else {
+            (self.0 - 3) as usize
+        }
     }
 }
 
 impl From<u32> for HalfEdgeId {
     #[inline]
-    fn from(v: u32) -> Self { Self(v) }
+    fn from(v: u32) -> Self {
+        Self(v)
+    }
 }
 
 impl From<usize> for HalfEdgeId {
     #[inline]
-    fn from(v: usize) -> Self { Self(u32::try_from(v).expect("HalfEdgeId overflow")) }
+    fn from(v: usize) -> Self {
+        Self(u32::try_from(v).expect("HalfEdgeId overflow"))
+    }
 }
 
 impl From<HalfEdgeId> for u32 {
     #[inline]
-    fn from(v: HalfEdgeId) -> u32 { v.to_u32() }
+    fn from(v: HalfEdgeId) -> u32 {
+        v.to_u32()
+    }
 }
 
 impl From<HalfEdgeId> for usize {
     #[inline]
-    fn from(v: HalfEdgeId) -> usize { v.to_usize() }
+    fn from(v: HalfEdgeId) -> usize {
+        v.to_usize()
+    }
 }
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -273,13 +319,19 @@ impl Default for HalfEdge {
 
 impl HalfEdge {
     #[inline]
-    pub fn tail_id(&self) -> VertexId { self.tail }
+    pub fn tail_id(&self) -> VertexId {
+        self.tail
+    }
 
     #[inline]
-    pub fn head_id(&self) -> VertexId { self.head }
+    pub fn head_id(&self) -> VertexId {
+        self.head
+    }
 
     #[inline]
-    pub fn pair_id(&self) -> HalfEdgeId { self.pair }
+    pub fn pair_id(&self) -> HalfEdgeId {
+        self.pair
+    }
 
     #[inline]
     pub fn new(tail: usize, head: usize, pair: usize) -> Self {
@@ -306,17 +358,29 @@ impl HalfEdge {
 
     #[inline]
     pub fn tail(&self) -> Option<u32> {
-        if self.tail.is_invalid() { None } else { Some(self.tail.to_u32()) }
+        if self.tail.is_invalid() {
+            None
+        } else {
+            Some(self.tail.to_u32())
+        }
     }
 
     #[inline]
     pub fn head(&self) -> Option<u32> {
-        if self.head.is_invalid() { None } else { Some(self.head.to_u32()) }
+        if self.head.is_invalid() {
+            None
+        } else {
+            Some(self.head.to_u32())
+        }
     }
 
     #[inline]
     pub fn pair(&self) -> Option<u32> {
-        if self.pair.is_invalid() { None } else { Some(self.pair.to_u32()) }
+        if self.pair.is_invalid() {
+            None
+        } else {
+            Some(self.pair.to_u32())
+        }
     }
 }
 
@@ -376,11 +440,7 @@ pub fn get_aa_proj_matrix<T: BoolReal>(n: &Vector3<T>) -> (Vector3<T>, Vector3<T
         m = n.x;
     } // preserve y, z
 
-    if m < T::zero() {
-        (-r1, r2)
-    } else {
-        (r1, r2)
-    }
+    if m < T::zero() { (-r1, r2) } else { (r1, r2) }
 }
 
 pub fn compute_aa_proj<T: BoolReal>(p: &(Vector3<T>, Vector3<T>), v: &Vector3<T>) -> Vector2<T> {
@@ -395,11 +455,7 @@ pub fn is_ccw_2d<T: BoolReal>(p0: &Vector2<T>, p1: &Vector2<T>, p2: &Vector2<T>,
     if area.powi(2) * T::cast_from_usize(4) <= base * t.powi(2) {
         return 0;
     }
-    if area > T::zero() {
-        1
-    } else {
-        -1
-    }
+    if area > T::zero() { 1 } else { -1 }
 }
 
 pub fn is_ccw_3d<T: BoolReal>(

@@ -5,7 +5,7 @@
 use nalgebra::{Vector3, Vector4};
 
 use super::kernel01::{intersect, shadows, shadows01};
-use crate::{common::BoolReal, HalfEdge};
+use crate::{HalfEdge, common::BoolReal};
 
 pub struct Kernel11<'a, T> {
     pub ps_p: &'a [Vector3<T>],
@@ -24,8 +24,14 @@ impl<'a, T: BoolReal> Kernel11<'a, T> {
         let mut shadow_ = false;
         let mut s11 = 0;
 
-        let p0 = [usize::from(self.hs_p[p1].tail), usize::from(self.hs_p[p1].head)];
-        let q0 = [usize::from(self.hs_q[q1].tail), usize::from(self.hs_q[q1].head)];
+        let p0 = [
+            usize::from(self.hs_p[p1].tail),
+            usize::from(self.hs_p[p1].head),
+        ];
+        let q0 = [
+            usize::from(self.hs_q[q1].tail),
+            usize::from(self.hs_q[q1].head),
+        ];
 
         for i in 0..2 {
             if let Some((s, yz)) = shadows01(

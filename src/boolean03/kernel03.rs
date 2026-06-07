@@ -4,9 +4,9 @@
 use nalgebra::Vector2;
 
 use super::kernel02::Kernel02;
+use crate::Manifold;
 use crate::bounds::{BPos, Query};
 use crate::common::BoolReal;
-use crate::Manifold;
 
 pub fn winding03<T: BoolReal>(
     mp: &Manifold<T>,

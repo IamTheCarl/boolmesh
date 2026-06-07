@@ -3,7 +3,7 @@
 
 use nalgebra::{Vector2, Vector3};
 
-use super::flat_tree::{compute_flat_tree, compute_query_flat_tree, Rect};
+use super::flat_tree::{Rect, compute_flat_tree, compute_query_flat_tree};
 use crate::common::BoolReal;
 use crate::triangulation::Pt;
 use crate::{det2x2, is_ccw_2d, safe_normalize};
@@ -45,6 +45,7 @@ impl<T: BoolReal> Ecvt<T> {
     pub fn dir_l(&self) -> Vector2<T> {
         self.ptr_l().borrow().dir
     }
+    #[allow(dead_code)]
     pub fn dir_r(&self) -> Vector2<T> {
         self.ptr_r().borrow().dir
     }
@@ -321,7 +322,8 @@ impl<T: BoolReal> Ord for EvPtrMinCost<T> {
             let b = other.0.borrow();
             (b.cost, b.idx)
         };
-        cost1.partial_cmp(&cost2)
+        cost1
+            .partial_cmp(&cost2)
             .unwrap_or(Ordering::Equal)
             .then_with(|| idx1.cmp(&idx2))
     }

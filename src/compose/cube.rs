@@ -2,8 +2,8 @@
 //--- This Source Code Form is subject to the terms of the Mozilla Public License v.2.0.
 
 use crate::{
-    manifold::{Manifold, ManifoldError},
     BoolReal,
+    manifold::{Manifold, ManifoldError},
 };
 
 pub fn generate_cube<T: BoolReal>() -> Result<Manifold<T>, ManifoldError> {

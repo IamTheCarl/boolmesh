@@ -7,7 +7,7 @@ use super::{
     collapse_triangle, form_loops, head_of, hids_of, next_of, pair_of, remove_if_folded,
     update_vid_around_star,
 };
-use crate::{common::BoolReal, is_ccw_3d, HalfEdge, Tref};
+use crate::{HalfEdge, Tref, common::BoolReal, is_ccw_3d};
 
 // Check around a halfedges from the same tail vertex.
 // If they consist of only two tris, then their edge is collapsable.

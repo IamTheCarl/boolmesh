@@ -6,7 +6,7 @@ use nalgebra::Vector3;
 use thiserror::Error;
 
 use crate::common::BoolReal;
-use crate::{manifold::ManifoldError, Manifold};
+use crate::{Manifold, manifold::ManifoldError};
 
 pub fn generate_uv_sphere<T: BoolReal>(
     d0: usize, // sectors

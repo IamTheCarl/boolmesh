@@ -90,7 +90,11 @@ pub fn menger_sponge(n: usize) -> Manifold {
     let holes_z = compose(&holes).unwrap();
 
     let rot = |x: f64, y: f64, z: f64| {
-        let ts = holes_z.halfedges().iter().map(|h| usize::from(h.tail)).collect::<Vec<_>>();
+        let ts = holes_z
+            .halfedges()
+            .iter()
+            .map(|h| usize::from(h.tail))
+            .collect::<Vec<_>>();
         let mut ps: Vec<_> = holes_z.positions().to_vec();
         let r = nalgebra::Rotation3::from_euler_angles(x, y, z).into_inner();
         for p in ps.iter_mut() {
