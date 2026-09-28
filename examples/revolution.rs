@@ -102,7 +102,7 @@ fn setup(
 
     cmds.spawn((PointLight::default(), Transform::from_xyz(2., 5., 2.)));
     cmds.spawn((
-        Transform::from_translation(Vector3::new(0., 2., 3.).cast::<f32>().into()),
+        Transform::from_translation(Vec3::new(0., 2., 3.)),
         PanOrbitCamera::default(),
     ));
 }
@@ -130,11 +130,11 @@ fn spawn_model(
         cmds.spawn((
             Mesh3d(meshes.add(mesh).clone()),
             MeshMaterial3d(mats.add(StandardMaterial { ..default() })),
-            Transform::from_translation(
-                (translation + Vector3::new(0.0, 0.0, 2.0))
-                    .cast::<f32>()
-                    .into(),
-            ),
+            Transform::from_translation(Vec3::new(
+                translation.x as f32,
+                translation.y as f32,
+                (translation.z + 2.0) as f32,
+            )),
             Wireframe,
             WireframeColor {
                 color: BLACK.into(),
@@ -166,7 +166,11 @@ fn spawn_model(
     cmds.spawn((
         Mesh3d(meshes.add(m).clone()),
         MeshMaterial3d(mats.add(StandardMaterial { ..default() })),
-        Transform::from_translation(translation.cast::<f32>().into()),
+        Transform::from_translation(Vec3::new(
+            translation.x as f32,
+            translation.y as f32,
+            translation.z as f32,
+        )),
         Wireframe,
         WireframeColor {
             color: BLACK.into(),

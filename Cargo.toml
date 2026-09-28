@@ -12,7 +12,7 @@ categories = ["algorithms", "mathematics", "graphics", "simulation", "game-devel
 exclude = ["/examples", ".gitignore"]
 
 [dependencies]
-nalgebra = "0.34"
+nalgebra = "0.35"
 rayon =  { version = "1.11.0", optional = true }
 
 tobj = {version = "4.0.3", optional = true}
@@ -39,8 +39,7 @@ serde = ["dep:serde", "dep:bincode", "nalgebra/serde-serialize"]
 bevy = [
     "dep:tobj",
     "dep:bevy",
-    "dep:bevy_panorbit_camera",
-    "nalgebra/glam029"
+    "dep:bevy_panorbit_camera"
 ]
 
 [[bin]]

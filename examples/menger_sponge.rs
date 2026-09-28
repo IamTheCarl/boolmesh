@@ -45,7 +45,7 @@ fn setup(
 
     cmds.spawn((DirectionalLight::default(), Transform::from_xyz(3., 4., 3.)));
     cmds.spawn((
-        Transform::from_translation(Vector3::new(0., 0., 2.).cast::<f32>().into()),
+        Transform::from_translation(Vec3::new(0., 0., 2.)),
         PanOrbitCamera::default(),
     ));
 
